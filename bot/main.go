@@ -35,11 +35,11 @@ func main() {
 	// Initialize event collector
 	eventCollector := collector.NewEventCollector(apiKey, event)
 
-	// Start the conversation
+	// Start conversation
 	fmt.Println("\n" + strings.Repeat("=", 60))
-	fmt.Println("EVENT DOCUMENTATION BOT")
+	fmt.Println("TEST BOT")
 	fmt.Println(strings.Repeat("=", 60))
-	fmt.Println("\nType your responses naturally.")
+	fmt.Println("\nPlease type your responses when ready.")
 	fmt.Println("Type 'done' or 'exit' when finished.")
 	fmt.Println("Type 'status' to see current progress.")
 	fmt.Println("Type 'summary' to see what's been collected so far.")
