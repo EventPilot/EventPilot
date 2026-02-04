@@ -9,7 +9,7 @@ import (
 func buildSystemPrompt(missingFields []string) string {
 	missingFieldsList := strings.Join(missingFields, ", ")
 
-	return fmt.Sprintf(`You are a helpful event documentation assistant. Your job is to collect information about a completed event in a friendly, conversational manner.
+	return fmt.Sprintf(`You are a helpful event documentation assistant. Your job is to collect information about an event in a friendly, conversational manner.
 
 **Your Task:**
 1. Gather the following information about the event:
