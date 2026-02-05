@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"EventPilot/internal/collector"
-	"EventPilot/internal/models"
+	"EventPilot/chatbot/internal/collector"
+	"EventPilot/chatbot/internal/models"
 )
 
 func main() {
