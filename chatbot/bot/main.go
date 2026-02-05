@@ -36,9 +36,6 @@ func main() {
 	eventCollector := collector.NewEventCollector(apiKey, event)
 
 	// Start conversation
-	fmt.Println("\n" + strings.Repeat("=", 60))
-	fmt.Println("TEST BOT")
-	fmt.Println(strings.Repeat("=", 60))
 	fmt.Println("\nPlease type your responses when ready.")
 	fmt.Println("Type 'done' or 'exit' when finished.")
 	fmt.Println("Type 'status' to see current progress.")
@@ -70,7 +67,7 @@ func main() {
 		// Handle special commands
 		switch strings.ToLower(userInput) {
 		case "done", "exit", "quit":
-			fmt.Println("\nBot: Thank you! Let me summarize what we've collected...\n")
+			fmt.Println("\nBot: Thank you! Let me summarize what we've collected...")
 			goto finalize
 
 		case "status":
@@ -86,7 +83,7 @@ func main() {
 		response, err := eventCollector.ProcessMessage(userInput)
 		if err != nil {
 			log.Printf("Error processing message: %v", err)
-			fmt.Println("\nBot: I apologize, I had trouble processing that. Could you try rephrasing?\n")
+			fmt.Println("\nBot: I apologize, I had trouble processing that. Could you try rephrasing?")
 			continue
 		}
 
@@ -116,9 +113,7 @@ finalize:
 	// Display collected data
 	displayCollectedData(eventCollector.GetCollectedData())
 
-	fmt.Println("\n" + strings.Repeat("=", 60))
-	fmt.Println("Thank you for using the Event Documentation Bot!")
-	fmt.Println(strings.Repeat("=", 60))
+	fmt.Println("Thank you for using the Event Management Bot!")
 }
 
 func displayEventInfo(event *models.Event) {
@@ -174,18 +169,15 @@ func showSummary(collector *collector.EventCollector) {
 	collected := collector.GetCollectedData()
 
 	if len(collected) == 0 {
-		fmt.Println("\nNo information collected yet.\n")
+		fmt.Println("\nNo information collected yet.")
 		return
 	}
 
-	fmt.Println("\n" + strings.Repeat("-", 60))
 	fmt.Println("INFORMATION COLLECTED SO FAR:")
-	fmt.Println(strings.Repeat("-", 60))
 
 	for key, value := range collected {
 		fmt.Printf("• %s: %s\n", formatFieldName(key), value)
 	}
-	fmt.Println(strings.Repeat("-", 60) + "\n")
 }
 
 func formatFieldName(field string) string {
