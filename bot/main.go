@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"../internal/collector"
-	"../internal/models"
+	"EventPilot/internal/collector"
+	"EventPilot/internal/models"
 )
 
 func main() {
@@ -99,7 +99,7 @@ func main() {
 
 		// Check if collection is complete
 		if eventCollector.IsComplete() {
-			fmt.Println("✓ All information collected!")
+			fmt.Println("All information collected!")
 			goto finalize
 		}
 	}

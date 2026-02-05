@@ -3,8 +3,8 @@ package collector
 import (
 	"fmt"
 
-	"../../internal/claude"
-	"../../internal/models"
+	"EventPilot/internal/claude"
+	"EventPilot/internal/models"
 )
 
 // EventCollector manages the conversation flow for collecting event information
