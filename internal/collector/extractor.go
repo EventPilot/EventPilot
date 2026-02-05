@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"strings"
 
-	"../../internal/claude"
-	"../../internal/models"
+	"EventPilot/internal/claude"
+	"EventPilot/internal/models"
 )
 
 // Extractor handles extracting structured information from user messages
