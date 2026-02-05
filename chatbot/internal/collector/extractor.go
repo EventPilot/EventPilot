@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"strings"
 
-	"EventPilot/internal/claude"
-	"EventPilot/internal/models"
+	"EventPilot/chatbot/internal/claude"
+	"EventPilot/chatbot/internal/models"
 )
 
 // Handles extracting structured information from user messages
