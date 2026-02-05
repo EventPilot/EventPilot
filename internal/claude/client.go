@@ -9,10 +9,10 @@ import (
 )
 
 const (
-	DefaultAPIURL      = "https://api.anthropic.com/v1/messages"
-	DefaultModel       = "claude-3-haiku-20240307"
-	DefaultMaxTokens   = 1024
-	AnthropicVersion   = "2023-06-01"
+	DefaultAPIURL    = "https://api.anthropic.com/v1/messages"
+	DefaultModel     = "claude-haiku-4-5-20251001"
+	DefaultMaxTokens = 1024
+	AnthropicVersion = "2023-06-01"
 )
 
 // Client handles communication with the Claude API

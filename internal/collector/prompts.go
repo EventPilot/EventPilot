@@ -5,27 +5,26 @@ import (
 	"strings"
 )
 
-// buildSystemPrompt creates the system prompt for Claude based on the conversation state
+// Creates the system prompt for Claude based on the conversation state
 func buildSystemPrompt(missingFields []string) string {
 	missingFieldsList := strings.Join(missingFields, ", ")
 
-	return fmt.Sprintf(`You are a helpful event documentation assistant. Your job is to collect information about an event in a friendly, conversational manner.
+	return fmt.Sprintf(`You are a helpful marketing assistant for . Your job is to collect information about an event in a friendly, conversational manner.
 
 **Your Task:**
 1. Gather the following information about the event:
-   - Event highlights (key moments, successes, memorable aspects)
-   - Target audience (who attended, demographics, turnout)
-   - Special guests or speakers (if any, including their roles)
-   - Photos (ask if they have any to share, note if yes/no)
+   - Event highlights
+   - Attendance and target audience
+   - Special guests or speakers if any
+   - Photos if any
 
 2. The following fields are missing from our calendar database: %s
-   Please also ask about these fields naturally during the conversation.
+   Please also ask about these fields during the conversation.
 
 **Guidelines:**
 - Ask ONE question at a time to keep the conversation natural
 - Be conversational, warm, and friendly
 - If the user provides information about multiple fields at once, acknowledge all of it warmly
-- Periodically summarize what you've collected so far
 - When you have all the information, provide a complete summary and ask for confirmation
 - Use natural language - don't make it feel like filling out a form
 - Be encouraging and show appreciation for their time
@@ -45,7 +44,7 @@ Begin by warmly greeting the user and asking about the event highlights in a nat
 	)
 }
 
-// buildExtractionPrompt creates a prompt for extracting structured data from user messages
+// Creates a prompt for extracting structured data from user messages
 func buildExtractionPrompt(userMessage string) string {
 	return fmt.Sprintf(`Analyze this user message and extract any event information provided.
 Return ONLY a JSON object with the fields that were mentioned. 
@@ -76,7 +75,7 @@ Example outputs:
 	)
 }
 
-// buildSummaryPrompt creates a prompt for generating a final summary
+// Creates a prompt for generating a final summary
 func buildSummaryPrompt(collectedData map[string]string) string {
 	dataStr := ""
 	for key, value := range collectedData {

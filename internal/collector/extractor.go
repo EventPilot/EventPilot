@@ -9,19 +9,19 @@ import (
 	"EventPilot/internal/models"
 )
 
-// Extractor handles extracting structured information from user messages
+// Handles extracting structured information from user messages
 type Extractor struct {
 	claudeClient *claude.Client
 }
 
-// NewExtractor creates a new information extractor
+// Creates a new information extractor
 func NewExtractor(claudeClient *claude.Client) *Extractor {
 	return &Extractor{
 		claudeClient: claudeClient,
 	}
 }
 
-// Extract analyzes a user message and extracts structured event information
+// Analyzes a user message and extracts structured event information
 func (e *Extractor) Extract(userMessage string, state *models.ConversationState) error {
 	prompt := buildExtractionPrompt(userMessage)
 
@@ -50,7 +50,7 @@ func (e *Extractor) Extract(userMessage string, state *models.ConversationState)
 	return nil
 }
 
-// cleanJSONResponse removes markdown formatting and extra whitespace from JSON responses
+// Removes markdown formatting and extra whitespace from JSON responses
 func cleanJSONResponse(response string) string {
 	// Remove markdown code blocks
 	cleaned := strings.TrimSpace(response)
@@ -62,7 +62,7 @@ func cleanJSONResponse(response string) string {
 	return cleaned
 }
 
-// GenerateSummary creates a summary of all collected information
+// Creates a summary of all collected information
 func (e *Extractor) GenerateSummary(state *models.ConversationState) (string, error) {
 	if len(state.CollectedData) == 0 {
 		return "No information has been collected yet.", nil
@@ -78,7 +78,7 @@ func (e *Extractor) GenerateSummary(state *models.ConversationState) (string, er
 	return summary, nil
 }
 
-// ValidateCompleteness checks if all required fields have been collected
+// Checks if all required fields have been collected
 func (e *Extractor) ValidateCompleteness(state *models.ConversationState) (bool, []string) {
 	if len(state.MissingFields) == 0 {
 		return true, nil
