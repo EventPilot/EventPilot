@@ -1,0 +1,14 @@
+# Binaries
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+vendor/
+go.work
+.env
+.env.local
+.idea/
+.vscode/
