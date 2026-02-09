@@ -8,15 +8,17 @@ import (
 	"strings"
 	"time"
 
-	"EventPilot/chatbot/internal/collector"
-	"EventPilot/chatbot/internal/models"
+	"EventPilot/bot/config"
+	"EventPilot/bot/internal/collector"
+	"EventPilot/bot/internal/models"
+	"EventPilot/bot/internal/xapi"
 )
 
 func main() {
-	// Get API key from environment
-	apiKey := os.Getenv("ANTHROPIC_API_KEY")
-	if apiKey == "" {
-		log.Fatal("ANTHROPIC_API_KEY environment variable is required")
+	// Load configuration
+	cfg, err := config.Load()
+	if err != nil {
+		log.Fatalf("Failed to load configuration: %v", err)
 	}
 
 	// Hardcoded event for testing
@@ -33,14 +35,14 @@ func main() {
 	displayEventInfo(event)
 
 	// Initialize event collector
-	eventCollector := collector.NewEventCollector(apiKey, event)
+	eventCollector := collector.NewEventCollector(cfg.ClaudeAPIKey, event)
 
-	// Start conversation
-	fmt.Println("\nPlease type your responses when ready.")
+	// Start the conversation
+	fmt.Println("EVENTPILOT BOT")
+	fmt.Println("\nType your responses naturally.")
 	fmt.Println("Type 'done' or 'exit' when finished.")
 	fmt.Println("Type 'status' to see current progress.")
 	fmt.Println("Type 'summary' to see what's been collected so far.")
-	fmt.Println(strings.Repeat("-", 60) + "\n")
 
 	greeting, err := eventCollector.Start()
 	if err != nil {
@@ -96,7 +98,7 @@ func main() {
 
 		// Check if collection is complete
 		if eventCollector.IsComplete() {
-			fmt.Println("All information collected!")
+			fmt.Println("✓ All information collected!")
 			goto finalize
 		}
 	}
@@ -111,15 +113,127 @@ finalize:
 	}
 
 	// Display collected data
-	displayCollectedData(eventCollector.GetCollectedData())
+	collectedData := eventCollector.GetCollectedData()
+	displayCollectedData(collectedData)
 
-	fmt.Println("Thank you for using the Event Management Bot!")
+	// Offer to post to X
+	if cfg.HasXAPICredentials() {
+		fmt.Println("POST TO X (TWITTER)")
+		fmt.Print("\nWould you like to post this to X? (yes/no): ")
+		scanner.Scan()
+		postConfirmation := strings.ToLower(strings.TrimSpace(scanner.Text()))
+
+		if postConfirmation == "yes" || postConfirmation == "y" {
+			handleXPosting(cfg, event, collectedData, scanner)
+		}
+	} else {
+		fmt.Println("\n💡 Tip: Configure X API credentials to post directly to Twitter!")
+		fmt.Println("Add X_API_KEY, X_API_SECRET, X_ACCESS_TOKEN, and X_ACCESS_TOKEN_SECRET to your .env file")
+	}
+
+	fmt.Println("Thank you for using EventPilot!")
+}
+
+func handleXPosting(cfg *config.Config, event *models.Event, collectedData map[string]string, scanner *bufio.Scanner) {
+	// Initialize X API client
+	xClient, err := xapi.NewClient(xapi.Config{
+		APIKey:            cfg.XAPIKey,
+		APISecret:         cfg.XAPISecret,
+		AccessToken:       cfg.XAccessToken,
+		AccessTokenSecret: cfg.XAccessTokenSecret,
+	})
+	if err != nil {
+		log.Printf("Failed to initialize X API client: %v", err)
+		return
+	}
+
+	// Get user info
+	user, err := xClient.GetUserInfo()
+	if err != nil {
+		log.Printf("Failed to get X user info: %v", err)
+	} else {
+		fmt.Printf("✓ Connected to X as @%s\n\n", user)
+	}
+
+	// Create formatter
+	formatter := xapi.NewPostFormatter()
+
+	// Ask for post type
+	fmt.Println("Choose post type:")
+	fmt.Println("  1. Single post (concise)")
+	fmt.Println("  2. Thread (detailed, multiple tweets)")
+	fmt.Print("\nEnter choice (1 or 2): ")
+	scanner.Scan()
+	choice := strings.TrimSpace(scanner.Text())
+
+	switch choice {
+	case "1":
+		// Single post
+		postText, err := formatter.FormatSinglePost(event, collectedData)
+		if err != nil {
+			log.Printf("Error formatting post: %v", err)
+			return
+		}
+
+		// Preview
+		fmt.Println("\n" + formatter.PreviewPost(postText))
+
+		// Confirm
+		fmt.Print("\nPost this to X? (yes/no): ")
+		scanner.Scan()
+		if strings.ToLower(strings.TrimSpace(scanner.Text())) != "yes" {
+			fmt.Println("Post cancelled.")
+			return
+		}
+
+		// Post
+		tweet, err := xClient.PostTweet(postText)
+		if err != nil {
+			log.Printf("Failed to post tweet: %v", err)
+			return
+		}
+
+		fmt.Printf("\n✓ Successfully posted to X!\n")
+		fmt.Printf("View at: https://twitter.com/%s/status/%s\n", user, tweet.ID)
+
+	case "2":
+		// Thread
+		tweets, err := formatter.FormatThread(event, collectedData)
+		if err != nil {
+			log.Printf("Error formatting thread: %v", err)
+			return
+		}
+
+		// Preview
+		fmt.Println("\n" + formatter.PreviewThread(tweets))
+
+		// Confirm
+		fmt.Print("\nPost this thread to X? (yes/no): ")
+		scanner.Scan()
+		if strings.ToLower(strings.TrimSpace(scanner.Text())) != "yes" {
+			fmt.Println("Thread cancelled.")
+			return
+		}
+
+		// Post thread
+		postedTweets, err := xClient.PostThread(tweets)
+		if err != nil {
+			log.Printf("Failed to post thread: %v", err)
+			return
+		}
+
+		fmt.Printf("\n✓ Successfully posted thread to X! (%d tweets)\n", len(postedTweets))
+		fmt.Printf("View at: https://twitter.com/%s/status/%s\n",
+			user,
+			postedTweets[0].ID)
+
+	default:
+		fmt.Println("Invalid choice. Post cancelled.")
+	}
 }
 
 func displayEventInfo(event *models.Event) {
-	fmt.Println("\n" + strings.Repeat("=", 60))
 	fmt.Println("EXISTING EVENT INFORMATION")
-	fmt.Println(strings.Repeat("=", 60))
 	fmt.Printf("Event ID: %s\n", event.ID)
 	fmt.Printf("Event Name: %s\n", event.Name)
 	fmt.Printf("Date: %s\n", event.Date.Format("January 2, 2006"))
@@ -140,9 +254,7 @@ func displayCollectedData(data map[string]string) {
 		return
 	}
 
-	fmt.Println("\n" + strings.Repeat("=", 60))
 	fmt.Println("COLLECTED INFORMATION")
-	fmt.Println(strings.Repeat("=", 60))
 
 	for key, value := range data {
 		fmt.Printf("• %s: %s\n", formatFieldName(key), value)
