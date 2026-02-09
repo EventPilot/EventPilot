@@ -23,7 +23,7 @@ Sql is a better fit for EventPilot because our core data model is relational. Us
 
 | column | type | notes                         |
 | ------ | ---- | ----------------------------- |
-| id     | int  | primary key                   |
+| id     | uuid | primary key                   |
 | name   | text | user name                     |
 | role   | text | owner, photographer, customer |
 
@@ -31,7 +31,7 @@ Sql is a better fit for EventPilot because our core data model is relational. Us
 
 | column      | type | notes             |
 | ----------- | ---- | ----------------- |
-| id          | int  | primary key       |
+| id          | uuid | primary key       |
 | title       | text | event title       |
 | description | text | event discription |
 | event_date  | date | event date        |
@@ -42,8 +42,8 @@ Sql is a better fit for EventPilot because our core data model is relational. Us
 
 | column   | type | notes       |
 | -------- | ---- | ----------- |
-| user_id  | int  | foreign key |
-| event_id | int  | foreign key |
+| user_id  | uuid | foreign key |
+| event_id | uuid | foreign key |
 
 ### chats
 
@@ -51,8 +51,8 @@ Sql is a better fit for EventPilot because our core data model is relational. Us
 
 | column     | type        | notes         |
 | ---------- | ----------- | ------------- |
-| id         | int         | primary key   |
-| event_id   | int         | foreign key   |
+| id         | uuid        | primary key   |
+| event_id   | uuid        | foreign key   |
 | created_at | timestamptz | default now() |
 
 ### chat_messages
@@ -62,10 +62,10 @@ Sql is a better fit for EventPilot because our core data model is relational. Us
 
 | column      | type        | notes              |
 | ----------- | ----------- | ------------------ |
-| id          | int         | primary key        |
-| chat_id     | int         | foreign key        |
+| id          | uuid        | primary key        |
+| chat_id     | uuid        | foreign key        |
 | sender_type | text        | user/agent         |
-| sender_id   | int         | null if it's agent |
+| sender_id   | uuid        | null if it's agent |
 | message     | text        | message            |
 | created_at  | timestamptz | default now()      |
 
@@ -73,8 +73,8 @@ Sql is a better fit for EventPilot because our core data model is relational. Us
 
 | column     | type        | notes                            |
 | ---------- | ----------- | -------------------------------- |
-| id         | int         | primary key                      |
-| event_id   | int         | foreign key                      |
+| id         | uuid        | primary key                      |
+| event_id   | uuid        | foreign key                      |
 | content    | text        | generated post text              |
 | status     | text        | posted, failed                   |
 | url        | text        | link to live post (verification) |
@@ -86,9 +86,9 @@ Sql is a better fit for EventPilot because our core data model is relational. Us
 
 | column       | type        | notes                  |
 | ------------ | ----------- | ---------------------- |
-| id           | int         | primary key            |
-| event_id     | int         | foreign key            |
-| uploaded_by  | int         | foreign key (users.id) |
+| id           | uuid        | primary key            |
+| event_id     | uuid        | foreign key            |
+| uploaded_by  | uuid        | foreign key (users.id) |
 | media_type   | text        | image, video           |
 | storage_path | text        | path/filename          |
 | metadata     | jsonb       | media properties       |
