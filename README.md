@@ -36,7 +36,7 @@ EventPilot/
 ```bash
 cd api
 go mod download
-go run main.go
+set -a && source ../.env && set +a && go run main.go
 ```
 
 ### Frontend (Next.js)
