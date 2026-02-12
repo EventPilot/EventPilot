@@ -130,7 +130,7 @@ func handleBlueskyPosting(event *models.Event, handle, password string) error {
 	}
 
 	// Initialize Bluesky client
-	fmt.Println("\n🔐 Connecting to Bluesky...")
+	fmt.Println("\n Connecting to Bluesky")
 	bskyClient, err := bluesky.NewClient(bluesky.Config{
 		Handle:   handle,
 		Password: password,
@@ -140,7 +140,7 @@ func handleBlueskyPosting(event *models.Event, handle, password string) error {
 	}
 
 	username := bskyClient.GetUserHandle()
-	fmt.Printf("✓ Connected as @%s\n\n", username)
+	fmt.Printf("Connected as @%s\n\n", username)
 
 	formatter := bluesky.NewPostFormatter()
 
