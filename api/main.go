@@ -4,23 +4,26 @@ import (
 	"log"
 	"net/http"
 	"os"
-
 	"eventpilot/api/handlers"
 	"eventpilot/api/middleware"
+	"github.com/supabase-community/supabase-go"
 )
 
 func main() {
 	mux := http.NewServeMux()
 
-	mux.HandleFunc("GET /api/events", handlers.ListEvents)
+	supabaseClient, err := supabase.NewClient(os.Getenv("SUPABASE_URL"), os.Getenv("SUPABASE_SERVICE_ROLE_KEY"), nil)
+	if err != nil {
+		log.Fatalf("Error creating supabase client: %v", err)
+	}
+
+	chatHandler := &handlers.ChatHandler{SupabaseClient: supabaseClient}
+
 	mux.HandleFunc("POST /api/events", handlers.CreateEvent)
-	mux.HandleFunc("GET /api/events/{id}", handlers.GetEvent)
 	mux.HandleFunc("PATCH /api/events/{id}", handlers.UpdateEvent)
-	mux.HandleFunc("GET /api/events/{id}/chat", handlers.GetChat)
 	mux.HandleFunc("POST /api/events/{id}/chat/messages", handlers.CreateChatMessage)
-	mux.HandleFunc("POST /api/events/{id}/chat/request-inputs", handlers.RequestInputs)
+	mux.HandleFunc("POST /api/events/{id}/chat/request-inputs", chatHandler.RequestInputs)
 	mux.HandleFunc("POST /api/events/{id}/media", handlers.UploadMedia)
-	mux.HandleFunc("GET /api/events/{id}/media", handlers.ListMedia)
 	mux.HandleFunc("POST /api/events/{id}/generate-post", handlers.GeneratePost)
 	mux.HandleFunc("GET /api/events/{id}/post", handlers.GetPost)
 	mux.HandleFunc("POST /api/events/{id}/post/publish", handlers.PublishPost)

@@ -13,9 +13,17 @@ type Event struct {
 	EventDate   string `json:"event_date"`
 }
 
-type EventOwner struct {
-	UserID  int `json:"user_id"`
-	EventID int `json:"event_id"`
+type EventMember struct {
+	UserID  int    `json:"user_id"`
+	EventID int    `json:"event_id"`
+	Role    string `json:"role"`
+}
+
+type EventMembersWithDetails struct {
+	Role   string `json:"role"`
+	UserID string `json:"user_id"`
+	Event  *Event `json:"event"`
+	User   *User  `json:"user"`
 }
 
 type Chat struct {
@@ -31,6 +39,11 @@ type ChatMessage struct {
 	SenderID   *int   `json:"sender_id"`
 	Message    string `json:"message"`
 	CreatedAt  string `json:"created_at"`
+}
+
+type ChatParticipant struct {
+	ChatID int `json:"chat_id"`
+	UserID int `json:"user_id"`
 }
 
 type Post struct {
