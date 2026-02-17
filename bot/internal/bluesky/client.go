@@ -14,7 +14,7 @@ const (
 	DefaultAPIURL = "https://bsky.social/xrpc"
 )
 
-// Client handles communication with Bluesky API
+// Communication with Bluesky API
 type Client struct {
 	apiURL     string
 	handle     string
@@ -23,13 +23,13 @@ type Client struct {
 	httpClient *http.Client
 }
 
-// Config holds Bluesky configuration
+// Holds Bluesky configuration
 type Config struct {
-	Handle   string // your.handle.bsky.social
-	Password string // App password (not your main password!)
+	Handle   string
+	Password string
 }
 
-// Session holds authentication info
+// Holds authentication info
 type Session struct {
 	AccessJwt  string `json:"accessJwt"`
 	RefreshJwt string `json:"refreshJwt"`
@@ -37,14 +37,14 @@ type Session struct {
 	DID        string `json:"did"`
 }
 
-// Post represents a Bluesky post
+// Represents a Bluesky post
 type Post struct {
 	URI  string
 	CID  string
 	Text string
 }
 
-// NewClient creates a new Bluesky client
+// Creates a new Bluesky client
 func NewClient(config Config) (*Client, error) {
 	if config.Handle == "" || config.Password == "" {
 		return nil, fmt.Errorf("handle and password are required")
@@ -57,7 +57,6 @@ func NewClient(config Config) (*Client, error) {
 		httpClient: &http.Client{Timeout: 30 * time.Second},
 	}
 
-	// Authenticate immediately
 	if err := client.authenticate(); err != nil {
 		return nil, fmt.Errorf("authentication failed: %w", err)
 	}
@@ -65,7 +64,7 @@ func NewClient(config Config) (*Client, error) {
 	return client, nil
 }
 
-// authenticate creates a session with Bluesky
+// Creates a session with Bluesky
 func (c *Client) authenticate() error {
 	type authRequest struct {
 		Identifier string `json:"identifier"`
@@ -113,7 +112,7 @@ func (c *Client) authenticate() error {
 	return nil
 }
 
-// PostText posts a text post to Bluesky
+// Posts a text post to Bluesky
 func (c *Client) PostText(text string) (*Post, error) {
 	if c.session == nil {
 		return nil, fmt.Errorf("not authenticated")
@@ -229,7 +228,7 @@ func (c *Client) PostThread(posts []string) ([]*Post, error) {
 	return postedPosts, nil
 }
 
-// postReply posts a reply to a previous post (for threading)
+// Posts a reply to a previous post (for threading)
 func (c *Client) postReply(text string, parent *Post) (*Post, error) {
 	if c.session == nil {
 		return nil, fmt.Errorf("not authenticated")
@@ -320,7 +319,7 @@ func (c *Client) postReply(text string, parent *Post) (*Post, error) {
 	}, nil
 }
 
-// GetUserHandle returns the authenticated user's handle
+// Returns the authenticated user's handle
 func (c *Client) GetUserHandle() string {
 	if c.session == nil {
 		return ""
@@ -328,14 +327,13 @@ func (c *Client) GetUserHandle() string {
 	return c.session.Handle
 }
 
-// GetPostURL converts a post URI to a web URL
+// Converts a post URI to a web URL
 func (c *Client) GetPostURL(post *Post) string {
 	if post == nil {
 		return ""
 	}
 
 	// Extract the post ID from the URI
-	// URI format: at://did:plc:xxxxx/app.bsky.feed.post/xxxxx
 	parts := strings.Split(post.URI, "/")
 	if len(parts) < 3 {
 		return ""
