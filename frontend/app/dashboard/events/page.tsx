@@ -4,7 +4,6 @@ import { AppShell } from '@/components/shell/app-shell'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
-// import { listEvents } from '@/lib/data/events'
 import { EventCard } from '@/components/domain/event-card'
 
 export default async function EventsPage() {
@@ -22,7 +21,9 @@ export default async function EventsPage() {
         title,
         description,
         event_date,
-        created_at
+        created_at,
+        location,
+        status
       )
     `)
     .eq('user_id', user.id)
@@ -50,12 +51,13 @@ export default async function EventsPage() {
           </Link>
         </div>
 
-        <div className="mt-6 grid grid-cols-2 gap-4">
+        <div className="mt-6 grid grid-cols-3 gap-4">
           {events.map((e: any) => (
             <EventCard
               key={e.id}
               title={e.title}
-              subtitle={`${e.event_date}`}
+              subtitle={e.location ? `${e.event_date} • ${e.location}`: `${e.event_date}`}
+              status={e.status}
               role={e.role}
               href={`/dashboard/events/${e.id}`}
             />

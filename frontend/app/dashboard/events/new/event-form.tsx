@@ -70,15 +70,13 @@ export function EventForm() {
         <div className="col-span-8">
           <Card className="p-6">
             <div className="text-lg font-semibold">Event basics</div>
-
             <div className="mt-6 space-y-5">
               <Field label="Event title" placeholder="Customer Rocket Launch — Artemis Demo" name="title" required />
-              <Field label="Client / partner" placeholder="Artemis Aerospace" />
+              {/* <Field label="Client / partner" placeholder="Artemis Aerospace" /> */}
               <div className="grid grid-cols-2 gap-4">
                 <Field label="Event date" placeholder="" name="event_date" type="date" required />
-                <Field label="End date & time" placeholder="02/18/2026 4:00 PM" />
+                <Field label="Location" placeholder="Wallops Flight Facility" name="location" />
               </div>
-              <Field label="Location" placeholder="Wallops Flight Facility" />
               <Field label="Description" placeholder="What is this milestone, and why it matters? (short)" name="description" tall required />
               <Field label="Tags" placeholder="Launch, Milestone, Customer" />
             </div>
