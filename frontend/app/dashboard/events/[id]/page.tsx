@@ -9,20 +9,40 @@ import { EventDetailTabs } from '@/components/domain/event-detail-tabs'
 import { Timeline } from '@/components/domain/timeline'
 import { RoleInputs } from '@/components/domain/role-inputs'
 import { DraftPreview } from '@/components/domain/draft-preview'
-import { getEventById } from '@/lib/data/events'
 
-export default async function EventDetailCollectPage({ params }: { params: { id: string } }) {
+export default async function EventDetailCollectPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
-
-  const event = await getEventById(params.id)
-  if (!event) notFound()
+  
+  // fetch event
+  const { data: event, error } = await supabase
+    .from('event')
+    .select('*')
+    .eq('id', id)
+    .single()
+  if (error || !event) notFound()
+  console.log(event)
+  // fetch member with user names
+  const { data: members } = await supabase
+  .from('event_member')
+  .select(`
+    role,
+    user_id,
+    user (
+      id,
+      name
+    )
+  `)
+  .eq('event_id', id)
+  console.log(members)
+  const currentUserRole = members?.find(m => m.user_id === user.id)?.role ?? 'member'
 
   return (
     <AppShell title="Event detail">
       <div className="space-y-6">
-        <EventHeader event={event} />
+        <EventHeader event={event} role={currentUserRole}/>
 
         <EventDetailTabs eventId={event.id} active="collect" />
 
@@ -33,7 +53,7 @@ export default async function EventDetailCollectPage({ params }: { params: { id:
           </div>
         </Card>
 
-        <div className="grid grid-cols-12 gap-6">
+        {/* <div className="grid grid-cols-12 gap-6">
           <div className="col-span-4">
             <Timeline items={event.timeline} />
           </div>
@@ -43,7 +63,7 @@ export default async function EventDetailCollectPage({ params }: { params: { id:
           <div className="col-span-4">
             <DraftPreview draft={event.draft} inputs={event.roleInputs} />
           </div>
-        </div>
+        </div> */}
       </div>
     </AppShell>
   )

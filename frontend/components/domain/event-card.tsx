@@ -3,7 +3,7 @@ import { Card } from '@/components/ui/card'
 import { StatusPill } from '@/components/ui/status-pill'
 import { Button } from '@/components/ui/button'
 
-type EventRole = 'owner' | 'engineer' | 'photographer'
+type EventRole = 'Owner' | 'Engineer' | 'Photographer'
 
 export function EventCard({
   title,
