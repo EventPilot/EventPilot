@@ -6,8 +6,8 @@ import (
 	"log"
 	"os"
 
-	"github.com/anthropics/anthropic-sdk-go"
-	"github.com/anthropics/anthropic-sdk-go/option"
+	"github.com/google/generative-ai-go/genai"
+	"google.golang.org/api/option"
 
 	"eventpilot/api/models"
 )
@@ -21,35 +21,39 @@ var fallbackMessages = map[string]string{
 
 const defaultFallback = "Hello! I'm here to help collect information and media for this event. What would you like to share?"
 
-// GenerateInitialMessage calls Claude to produce a role-specific opening message for
+// GenerateInitialMessage calls Gemini to produce a role-specific opening message for
 // an event member's chat thread. On any error it returns a role-appropriate fallback.
 func GenerateInitialMessage(ctx context.Context, member models.EventMembersWithDetails) string {
-	apiKey := os.Getenv("ANTHROPIC_API_KEY")
+	apiKey := os.Getenv("GEMINI_API_KEY")
 	if apiKey == "" {
-		log.Println("ANTHROPIC_API_KEY not set, using fallback message")
+		log.Println("GEMINI_API_KEY not set, using fallback message")
 		return getFallback(member.Role)
 	}
 
-	client := anthropic.NewClient(option.WithAPIKey(apiKey))
+	client, err := genai.NewClient(ctx, option.WithAPIKey(apiKey))
+	if err != nil {
+		log.Printf("Failed to create Gemini client for member %s (role: %s): %v", member.UserID, member.Role, err)
+		return getFallback(member.Role)
+	}
+	defer client.Close()
 
-	msg, err := client.Messages.New(ctx, anthropic.MessageNewParams{
-		Model:     anthropic.ModelClaude3_5HaikuLatest,
-		MaxTokens: 200,
-		System: []anthropic.TextBlockParam{
-			{Text: buildSystemPrompt()},
-		},
-		Messages: []anthropic.MessageParam{
-			anthropic.NewUserMessage(anthropic.NewTextBlock(buildUserPrompt(member))),
-		},
-	})
+	model := client.GenerativeModel("gemini-2.0-flash")
+	model.SetMaxOutputTokens(200)
+	model.SystemInstruction = &genai.Content{
+		Parts: []genai.Part{genai.Text(buildSystemPrompt())},
+	}
+
+	resp, err := model.GenerateContent(ctx, genai.Text(buildUserPrompt(member)))
 	if err != nil {
 		log.Printf("LLM call failed for member %s (role: %s): %v", member.UserID, member.Role, err)
 		return getFallback(member.Role)
 	}
 
-	for _, block := range msg.Content {
-		if tb, ok := block.AsAny().(anthropic.TextBlock); ok && tb.Text != "" {
-			return tb.Text
+	if len(resp.Candidates) > 0 && resp.Candidates[0].Content != nil {
+		for _, part := range resp.Candidates[0].Content.Parts {
+			if text, ok := part.(genai.Text); ok && text != "" {
+				return string(text)
+			}
 		}
 	}
 

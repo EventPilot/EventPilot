@@ -21,7 +21,7 @@ This document describes the **backend architecture** for the API, integrations, 
 | Goal | Constraint |
 |------|------------|
 | Simple deployment | Serverless on Vercel (no long-lived servers) |
-| Cost-conscious LLM usage | Prefer Claude ($50 free credits), fallback to OpenAI |
+| Cost-conscious LLM usage | Prefer Gemini Flash (Google AI free tier), fallback to OpenAI |
 | Reliable storage | Supabase (PostgreSQL) for users, events, chats, messages, posts, and media |
 | Multi-role workflows | Prompt Owner, Photographer, Customers per event |
 | Social distribution | Start with X API; extend to LinkedIn, Instagram |
@@ -45,7 +45,7 @@ This document describes the **backend architecture** for the API, integrations, 
                     ▼                             ▼                             ▼
             ┌───────────────┐             ┌───────────────┐             ┌───────────────┐
             │  Supabase     │             │  LLM Provider │             │  X (Twitter)  │
-            │  (PostgreSQL) │             │  Claude /     │             │  API v2       │
+            │  (PostgreSQL) │             │  Gemini /     │             │  API v2       │
             │  Users,       │             │  OpenAI       │             │  (post)       │
             │  Events,      │             │               │             │               │
             │  Chats,       │             │  - Chat       │             │  (future:     │
@@ -115,14 +115,14 @@ Authentication can be minimal at first (e.g. API key or simple JWT for “org”
 
 ## 7. LLM Integration
 
-- **Provider choice**: Prefer **Claude** (Anthropic) using the $50 free credits; **OpenAI** as fallback (e.g. when credits exhausted or for A/B).
+- **Provider choice**: Prefer **Gemini Flash** (Google AI) using `gemini-2.0-flash`; **OpenAI** as fallback (e.g. when quota exhausted or for A/B).
 - **Two LLM use cases**:
   1. **Chat message generation** (event → initial agent messages per role): Input = event name, date, description, role. Output = initial chat message text per role (stored in `chat_messages` with `sender_type: "agent"`).
   2. **Post generation** (event + chat messages → post): Input = event summary + all chat messages (from `chat_messages` table) + media metadata. Output = short post copy (e.g. tweet length) and optional image ordering (stored in `posts` table).
 
 Implementation in Go:
 
-- Use official SDKs: `github.com/anthropics/anthropic-sdk-go` (or REST) and `github.com/sashabaranov/go-openai`.
+- Use official SDKs: `github.com/google/generative-ai-go/genai` and `github.com/sashabaranov/go-openai`.
 - One small **provider abstraction** (interface) so you can switch or fallback:
   - `GenerateChatMessages(ctx, event, roles) (map[role]string, error)` - generates initial agent messages per role
   - `GeneratePost(ctx, event, chatMessages, media) (copy string, mediaOrder []string, error)` - generates post from event context, chat history, and media
@@ -147,7 +147,7 @@ Later: LinkedIn and Instagram as separate adapters (same “publish” abstracti
 - **Project layout** (example):
   - `frontend/` — Next.js (or root if monorepo).
   - `api/` — Go handlers; each file or subpath maps to a route (see Vercel docs for Go).
-- **Secrets**: Store in Vercel env (e.g. `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `DATABASE_URL` or `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY` for Supabase, `X_API_*`). Use Vercel’s env per environment (dev/preview/prod).
+- **Secrets**: Store in Vercel env (e.g. `GEMINI_API_KEY`, `OPENAI_API_KEY`, `DATABASE_URL` or `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY` for Supabase, `X_API_*`). Use Vercel’s env per environment (dev/preview/prod).
 - **Supabase**: From Vercel, use **pgx** (or Supabase Go client) with `DATABASE_URL` (Postgres connection string from Supabase dashboard). No AWS credentials needed for the database. See `database-architecture.md` for the complete schema including tables: `users`, `events`, `event_owners`, `chats`, `chat_messages`, `posts`, and `media`.
 
 ---
@@ -188,7 +188,7 @@ This keeps “Docker for infrastructure” without requiring Docker on Vercel; V
 |-------|--------|
 | **Hosting** | Vercel (Next.js + Go serverless API) |
 | **Database** | Supabase (PostgreSQL / relational) |
-| **LLM** | Claude first, OpenAI fallback; thin abstraction in Go |
+| **LLM** | Gemini Flash first, OpenAI fallback; thin abstraction in Go |
 | **Social** | X API v2 first; LinkedIn/Instagram later |
 | **Local dev** | Docker (Postgres or Supabase local) + Go API run locally |
 | **Auth** | Simple API key/JWT → refine later |
