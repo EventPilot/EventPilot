@@ -49,7 +49,7 @@ export default async function DashboardHomePage() {
                   title={current.title}
                   subtitle={`${current.start} • ${current.location}`}
                   status={current.status}
-                  role='engineer'
+                  role='Engineer'
                   href={`/dashboard/events/${current.id}`}
                 />
               ) : (
@@ -78,7 +78,7 @@ export default async function DashboardHomePage() {
                   title={e.title}
                   subtitle={`${e.start} • ${e.location}`}
                   status={e.status}
-                  role='photographer'
+                  role='Photographer'
                   href={`/dashboard/events/${e.id}`}
                 />
               ))}

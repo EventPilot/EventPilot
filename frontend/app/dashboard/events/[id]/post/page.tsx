@@ -7,22 +7,22 @@ import { EventHeader } from '@/components/domain/event-header'
 import { EventDetailTabs } from '@/components/domain/event-detail-tabs'
 import { XPostCard } from '@/components/domain/x-post-card'
 import { ChatPanel } from '@/components/domain/chat-panel'
-import { getEventById } from '@/lib/data/events'
+// import { getEventById } from '@/lib/data/events'
 
 export default async function EventDetailPostChatPage({ params }: { params: { id: string } }) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const event = await getEventById(params.id)
-  if (!event) notFound()
+  // const event = await getEventById(params.id)
+  // if (!event) notFound()
 
   const published = { ...event, status: 'Published' as const }
 
   return (
     <AppShell title="Event detail">
       <div className="space-y-6">
-        <EventHeader
+        {/* <EventHeader
           event={published}
           rightSlot={
             <div className="flex items-center gap-3">
@@ -30,12 +30,12 @@ export default async function EventDetailPostChatPage({ params }: { params: { id
               <Button>Republish</Button>
             </div>
           }
-        />
+        /> */}
 
-        <EventDetailTabs eventId={event.id} active="post" />
+        {/* <EventDetailTabs eventId={event.id} active="post" /> */}
 
         <div className="grid grid-cols-12 gap-6">
-          <div className="col-span-8 space-y-6">
+          {/* <div className="col-span-8 space-y-6">
             <Card className="p-6">
               <div className="text-lg font-semibold">Published post</div>
               <div className="text-sm text-gray-500 mt-1">Preview (matches X format closely)</div>
@@ -60,8 +60,8 @@ export default async function EventDetailPostChatPage({ params }: { params: { id
                 ))}
               </div>
             </Card>
-          </div>
-
+          </div> */}
+          <div>Haven't implemented yet</div>
           <div className="col-span-4">
             <ChatPanel />
           </div>
