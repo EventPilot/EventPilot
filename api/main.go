@@ -18,7 +18,9 @@ func main() {
 	}
 
 	chatHandler := &handlers.ChatHandler{SupabaseClient: supabaseClient}
+	cronHandler := &handlers.CronHandler{SupabaseClient: supabaseClient}
 
+	mux.HandleFunc("GET /api/cron/process-completed-events", cronHandler.ProcessCompletedEvents)
 	mux.HandleFunc("POST /api/events", handlers.CreateEvent)
 	mux.HandleFunc("PATCH /api/events/{id}", handlers.UpdateEvent)
 	mux.HandleFunc("POST /api/events/{id}/chat/messages", handlers.CreateChatMessage)
