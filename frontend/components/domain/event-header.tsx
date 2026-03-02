@@ -1,31 +1,34 @@
-import Link from 'next/link'
 import { Card } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
 import { StatusPill } from '@/components/ui/status-pill'
-import type { Event } from '@/lib/data/events'
+import { EventActions } from './event-actions'
 
-export function EventHeader({ event, rightSlot }: { event: Event; rightSlot?: React.ReactNode }) {
+interface EventData {
+  id: string
+  title: string
+  description: string
+  event_date: string
+  location: string
+  status: string
+  created_at: string
+}
+
+export function EventHeader({ event, role, rightSlot }: { event: EventData; role: string; rightSlot?: React.ReactNode }) {
   return (
     <Card className="p-6">
       <div className="flex items-start justify-between gap-6">
         <div>
           <div className="text-lg font-semibold">{event.title}</div>
           <div className="text-sm text-gray-500 mt-1">
-            {event.start} • {event.timezone} • {event.location}
+            {event.event_date} {event.location && `• ${event.location}`}
           </div>
-          <div className="mt-3">
+          <div className="inline-flex mt-3 gap-2">
+            <span className='items-center rounded-full border border-gray-200 bg-gray-100 px-3 py-1 text-xs text-gray-600'>
+              {role}                 
+            </span>
             <StatusPill status={event.status} />
           </div>
         </div>
-
-        {rightSlot ?? (
-          <div className="flex items-center gap-3">
-            <Link href={`/dashboard/events/${event.id}/post`}>
-              <Button>Generate draft</Button>
-            </Link>
-            <Button variant="secondary">Edit event</Button>
-          </div>
-        )}
+        {role === "Owner" && (rightSlot ?? <EventActions eventId={event.id}/>)}
       </div>
     </Card>
   )

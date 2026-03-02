@@ -1,14 +1,13 @@
 import { cn } from '@/lib/cn'
-import type { EventStatus } from '@/lib/data/events'
 
-const DOT: Record<EventStatus, string> = {
+const DOT: Record<string, string> = {
   Scheduled: 'bg-sky-500',
   'Awaiting inputs': 'bg-amber-500',
   'Draft ready': 'bg-green-600',
   Published: 'bg-green-600',
 }
 
-export function StatusPill({ status, className }: { status: EventStatus; className?: string }) {
+export function StatusPill({ status, className }: { status: string; className?: string }) {
   return (
     <span
       className={cn(
