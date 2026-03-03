@@ -4,15 +4,31 @@ import (
 	"log"
 	"net/http"
 	"os"
+
 	"eventpilot/api/handlers"
 	"eventpilot/api/middleware"
+
+	"github.com/joho/godotenv"
 	"github.com/supabase-community/supabase-go"
 )
 
 func main() {
+	// Load frontend env file for local dev (safe no-op in prod).
+	_ = godotenv.Load("../frontend/.env.local")
+
+	// Prefer backend-specific vars, but fall back to frontend ones.
+	url := os.Getenv("SUPABASE_URL")
+	if url == "" {
+		url = os.Getenv("NEXT_PUBLIC_SUPABASE_URL")
+	}
+	key := os.Getenv("SUPABASE_SERVICE_ROLE_KEY")
+	if key == "" {
+		key = os.Getenv("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY")
+	}
+
 	mux := http.NewServeMux()
 
-	supabaseClient, err := supabase.NewClient(os.Getenv("SUPABASE_URL"), os.Getenv("SUPABASE_SERVICE_ROLE_KEY"), nil)
+	supabaseClient, err := supabase.NewClient(url, key, nil)
 	if err != nil {
 		log.Fatalf("Error creating supabase client: %v", err)
 	}
@@ -23,7 +39,7 @@ func main() {
 	mux.HandleFunc("GET /api/cron/process-completed-events", cronHandler.ProcessCompletedEvents)
 	mux.HandleFunc("POST /api/events", handlers.CreateEvent)
 	mux.HandleFunc("PATCH /api/events/{id}", handlers.UpdateEvent)
-	mux.HandleFunc("POST /api/events/{id}/chat/messages", handlers.CreateChatMessage)
+	mux.HandleFunc("POST /api/events/{id}/chat/messages", chatHandler.CreateChatMessage)
 	mux.HandleFunc("POST /api/events/{id}/chat/request-inputs", chatHandler.RequestInputs)
 	mux.HandleFunc("POST /api/events/{id}/media", handlers.UploadMedia)
 	mux.HandleFunc("POST /api/events/{id}/generate-post", handlers.GeneratePost)

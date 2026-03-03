@@ -46,7 +46,7 @@ func (h *CronHandler) ProcessCompletedEvents(w http.ResponseWriter, r *http.Requ
 	for _, event := range events {
 		// Idempotency: skip events that already have chats created.
 		var chats []chatRow
-		_, err := h.SupabaseClient.From("chats").
+		_, err := h.SupabaseClient.From("chat").
 			Select("id", "", false).
 			Eq("event_id", event.ID).
 			Limit(1, "").

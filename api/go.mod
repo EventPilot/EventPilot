@@ -4,6 +4,7 @@ go 1.23.0
 
 require (
 	github.com/google/generative-ai-go v0.19.0
+	github.com/joho/godotenv v1.5.1
 	github.com/supabase-community/supabase-go v0.0.4
 	google.golang.org/api v0.228.0
 )

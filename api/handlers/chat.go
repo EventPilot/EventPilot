@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"eventpilot/api/models"
 	"eventpilot/api/services"
 	"net/http"
@@ -16,8 +17,87 @@ type ChatHandler struct {
 }
 
 func GetChat(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusNotImplemented) }
-func CreateChatMessage(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusNotImplemented)
+
+type createChatMessageRequest struct {
+	ChatID     string  `json:"chat_id"`
+	SenderType string  `json:"sender_type"`
+	SenderID   *string `json:"sender_id,omitempty"`
+	Message    string  `json:"message"`
+}
+
+func (h *ChatHandler) CreateChatMessage(w http.ResponseWriter, r *http.Request) {
+	eventId := r.PathValue("id")
+	if eventId == "" {
+		http.Error(w, "missing event id", http.StatusBadRequest)
+		return
+	}
+
+	var req createChatMessageRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "invalid JSON body", http.StatusBadRequest)
+		return
+	}
+	if req.ChatID == "" {
+		http.Error(w, "chat_id is required", http.StatusBadRequest)
+		return
+	}
+	if req.Message == "" {
+		http.Error(w, "message is required", http.StatusBadRequest)
+		return
+	}
+	if req.SenderType == "" {
+		req.SenderType = "user"
+	}
+
+	// Ensure the chat belongs to the given event.
+	type chatRow struct {
+		ID      string `json:"id"`
+		EventID string `json:"event_id"`
+	}
+	var chats []chatRow
+	_, err := h.SupabaseClient.
+		From("chat").
+		Select("id, event_id", "", false).
+		Eq("id", req.ChatID).
+		Eq("event_id", eventId).
+		Limit(1, "").
+		ExecuteTo(&chats)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("failed to verify chat: %v", err), http.StatusInternalServerError)
+		return
+	}
+	if len(chats) == 0 {
+		http.Error(w, "chat not found for event", http.StatusNotFound)
+		return
+	}
+
+	// Insert the new chat message.
+	insertData := map[string]any{
+		"chat_id":     req.ChatID,
+		"sender_type": req.SenderType,
+		"message":     req.Message,
+	}
+	if req.SenderID != nil {
+		insertData["sender_id"] = req.SenderID
+	}
+
+	var created []map[string]any
+	_, err = h.SupabaseClient.
+		From("chat_message").
+		Insert(insertData, false, "", "representation", "").
+		ExecuteTo(&created)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("failed to create chat message: %v", err), http.StatusInternalServerError)
+		return
+	}
+	if len(created) == 0 {
+		http.Error(w, "failed to create chat message", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	_ = json.NewEncoder(w).Encode(created[0])
 }
 
 // requestInputsForEvent creates info-collection chats for all valid members of an event.
