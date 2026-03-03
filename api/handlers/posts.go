@@ -18,24 +18,26 @@ type EventDetails struct {
 	Title       string `json:"title"`
 	Description string `json:"description"`
 	EventDate   string `json:"event_date"`
-	Created_At  string `json:"created_at"`
+	CreatedAt   string `json:"created_at"`
 	Location    string `json:"location"`
 	Status      string `json:"status"`
 }
 
 type MediaItem struct {
-	ID       string `json:"id"`
-	EventID  string `json:"event_id"`
-	URL      string `json:"url"`
-	Caption  string `json:"caption"`
-	MimeType string `json:"mime_type"`
+	ID          string `json:"id"`
+	EventID     string `json:"event_id"`
+	UploadedBy  string `json:"uploaded_by"`
+	MediaType   string `json:"media_type"`
+	StoragePath string `json:"storage_path"`
+	Metadata    string `json:"metadata"`
+	CreatedAt   string `json:"created_at"`
 }
 
 type Post struct {
 	ID        string `json:"id"`
 	EventID   string `json:"event_id"`
 	Content   string `json:"content"`
-	Status    string `json:"status"` // "draft" | "published"
+	Status    string `json:"status"`
 	URL       string `json:"url"`
 	CreatedAt string `json:"created_at,omitempty"`
 }
@@ -84,16 +86,9 @@ Write a short, engaging Bluesky post (≤300 characters) celebrating a completed
 Use an enthusiastic but professional tone. Include 1–3 relevant hashtags at the end.
 Return ONLY the post text — no commentary, no quotes, no markdown.`
 
-	mediaSummary := ""
-	for _, m := range media {
-		if m.Caption != "" {
-			mediaSummary += fmt.Sprintf("- %s\n", m.Caption)
-		}
-	}
-
 	userMsg := fmt.Sprintf(
-		"Event: %s\nDate: %s\nDescription: %s\nMedia captions:\n%s",
-		event.Title, event.EventDate, event.Description, mediaSummary,
+		"Event: %s\nDate: %s\nDescription: %s",
+		event.Title, event.EventDate, event.Description,
 	)
 
 	resp, err := client.SendMessage([]Message{{Role: "user", Content: userMsg}}, systemPrompt)
@@ -201,9 +196,6 @@ func publishToBluesky(content string) (string, error) {
 // ─── Handlers ────────────────────────────────────────────────────────────────
 
 // GeneratePost uses Claude to draft a social media post for a completed event
-// and persists it as a "draft" in the `post` table.
-//
-// POST /api/events/{id}/generate-post
 func GeneratePost(w http.ResponseWriter, r *http.Request) {
 	eventID := r.PathValue("id")
 
@@ -213,13 +205,18 @@ func GeneratePost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 1. Fetch event details
+	// Fetch event details
 	var events []EventDetails
 	_, err = sb.From("event").
 		Select("id, title, description, event_date, created_at, location, status", "", false).
 		Eq("id", eventID).
 		ExecuteTo(&events)
-	if err != nil || len(events) == 0 {
+	log.Printf("[GeneratePost] eventID=%v err=%v eventsFound=%d", eventID, err, len(events))
+	if err != nil {
+		http.Error(w, "supabase error: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if len(events) == 0 {
 		http.Error(w, "event not found", http.StatusNotFound)
 		return
 	}
@@ -228,7 +225,7 @@ func GeneratePost(w http.ResponseWriter, r *http.Request) {
 	// 2. Fetch associated media captions (best-effort)
 	var media []MediaItem
 	_, _ = sb.From("media").
-		Select("id, event_id, url, caption, mime_type", "", false).
+		Select("id, event_id, uploaded_by, media_type, storage_path, metadata, created_at", "", false).
 		Eq("event_id", eventID).
 		ExecuteTo(&media)
 
