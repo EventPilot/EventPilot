@@ -1,10 +1,9 @@
 package handlers
 
 import (
-	"encoding/json"
+	"context"
 	"fmt"
-	"net/http"
-	"os"
+	"log"
 	"time"
 
 	"github.com/supabase-community/supabase-go"
@@ -14,13 +13,7 @@ type CronHandler struct {
 	SupabaseClient *supabase.Client
 }
 
-func (h *CronHandler) ProcessCompletedEvents(w http.ResponseWriter, r *http.Request) {
-	secret := os.Getenv("CRON_SECRET")
-	if secret == "" || r.Header.Get("Authorization") != "Bearer "+secret {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
-		return
-	}
-
+func (h *CronHandler) ProcessCompletedEvents(ctx context.Context) error {
 	today := time.Now().UTC().Format("2006-01-02")
 
 	type eventRow struct {
@@ -32,15 +25,13 @@ func (h *CronHandler) ProcessCompletedEvents(w http.ResponseWriter, r *http.Requ
 		Lte("event_date", today).
 		ExecuteTo(&events)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("failed to fetch events: %v", err), http.StatusInternalServerError)
-		return
+		return fmt.Errorf("failed to fetch events: %w", err)
 	}
 
 	type chatRow struct {
 		ID string `json:"id"`
 	}
 
-	results := map[string]any{}
 	processed, skipped := 0, 0
 
 	for _, event := range events {
@@ -52,7 +43,7 @@ func (h *CronHandler) ProcessCompletedEvents(w http.ResponseWriter, r *http.Requ
 			Limit(1, "").
 			ExecuteTo(&chats)
 		if err != nil {
-			results[event.ID] = fmt.Sprintf("error checking chats: %v", err)
+			log.Printf("cron: error checking chats for event %s: %v", event.ID, err)
 			continue
 		}
 		if len(chats) > 0 {
@@ -60,19 +51,13 @@ func (h *CronHandler) ProcessCompletedEvents(w http.ResponseWriter, r *http.Requ
 			continue
 		}
 
-		chatIDs, err := requestInputsForEvent(r.Context(), h.SupabaseClient, event.ID)
-		if err != nil {
-			results[event.ID] = fmt.Sprintf("error: %v", err)
+		if _, err = requestInputsForEvent(ctx, h.SupabaseClient, event.ID); err != nil {
+			log.Printf("cron: error processing event %s: %v", event.ID, err)
 			continue
 		}
-		results[event.ID] = chatIDs
 		processed++
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]any{
-		"processed": processed,
-		"skipped":   skipped,
-		"results":   results,
-	})
+	log.Printf("cron: processed=%d skipped=%d", processed, skipped)
+	return nil
 }

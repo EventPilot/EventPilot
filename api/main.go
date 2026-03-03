@@ -1,13 +1,32 @@
 package main
 
 import (
+	"context"
 	"log"
 	"net/http"
 	"os"
+	"time"
+
 	"eventpilot/api/handlers"
 	"eventpilot/api/middleware"
+
 	"github.com/supabase-community/supabase-go"
 )
+
+func startCronWorker(h *handlers.CronHandler, interval time.Duration) {
+	run := func() {
+		if err := h.ProcessCompletedEvents(context.Background()); err != nil {
+			log.Printf("cron worker error: %v", err)
+		}
+	}
+	run() // run immediately on startup
+	ticker := time.NewTicker(interval)
+	go func() {
+		for range ticker.C {
+			run()
+		}
+	}()
+}
 
 func main() {
 	mux := http.NewServeMux()
@@ -20,7 +39,8 @@ func main() {
 	chatHandler := &handlers.ChatHandler{SupabaseClient: supabaseClient}
 	cronHandler := &handlers.CronHandler{SupabaseClient: supabaseClient}
 
-	mux.HandleFunc("GET /api/cron/process-completed-events", cronHandler.ProcessCompletedEvents)
+	startCronWorker(cronHandler, time.Hour)
+
 	mux.HandleFunc("POST /api/events", handlers.CreateEvent)
 	mux.HandleFunc("PATCH /api/events/{id}", handlers.UpdateEvent)
 	mux.HandleFunc("POST /api/events/{id}/chat/messages", handlers.CreateChatMessage)
