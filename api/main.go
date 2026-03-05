@@ -34,7 +34,7 @@ func main() {
 
 	mux := http.NewServeMux()
 
-	supabaseClient, err := supabase.NewClient(os.Getenv("SUPABASE_URL"), os.Getenv("SUPABASE_SERVICE_ROLE_KEY"), nil)
+	supabaseClient, err := supabase.NewClient(os.Getenv("SUPABASE_URL"), os.Getenv("SUPABASE_API_KEY"), nil)
 	if err != nil {
 		log.Fatalf("Error creating supabase client: %v", err)
 	}
