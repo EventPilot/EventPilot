@@ -28,6 +28,34 @@ export async function deleteEventAction(eventId: string) {
 
   redirect("/dashboard/events");
 }
+export async function markEventFinishedAction(eventId: string) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  const { data: membership } = await supabase
+    .from("event_member")
+    .select("role")
+    .eq("event_id", eventId)
+    .eq("user_id", user.id)
+    .single();
+
+  if (membership?.role !== "Owner") {
+    throw new Error("Only the event owner can update this event");
+  }
+
+  const { error } = await supabase
+    .from("event")
+    .update({ status: "Finished" })
+    .eq("id", eventId);
+
+  if (error) throw new Error(error.message);
+
+  redirect(`/dashboard/events/${eventId}`);
+}
+
 export async function updateEventAction(eventId: string, formData: FormData) {
   const supabase = await createClient();
   const {
