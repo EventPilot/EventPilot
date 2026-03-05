@@ -6,6 +6,7 @@ import (
 	"errors"
 	"eventpilot/api/models"
 	"eventpilot/api/services"
+	"log"
 	"net/http"
 
 	"github.com/supabase-community/supabase-go"
@@ -52,6 +53,7 @@ func requestInputsForEvent(ctx context.Context, client *supabase.Client, eventId
 	for _, m := range validMembers {
 		go func(m models.EventMembersWithDetails) {
 			message := services.GenerateInitialMessage(ctx, m)
+			log.Printf("[requestInputsForEvent] generated initial message for member %s (role: %s): %q", m.UserID, m.Role, message)
 			rpcBody := map[string]any{
 				"p_event_id":        eventId,
 				"p_member_user_id":  m.UserID,
@@ -80,17 +82,21 @@ func requestInputsForEvent(ctx context.Context, client *supabase.Client, eventId
 
 func (h *ChatHandler) RequestInputs(w http.ResponseWriter, r *http.Request) {
 	eventId := r.PathValue("id")
+	log.Printf("[RequestInputs] received request for eventId=%s", eventId)
 
 	chatIDs, err := requestInputsForEvent(r.Context(), h.SupabaseClient, eventId)
 	if err != nil {
+		log.Printf("[RequestInputs] error creating chats for eventId=%s: %v", eventId, err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	if len(chatIDs) == 0 {
+		log.Printf("[RequestInputs] no event members found for eventId=%s", eventId)
 		http.Error(w, "no event members found", http.StatusNotFound)
 		return
 	}
 
+	log.Printf("[RequestInputs] created %d chats for eventId=%s: %v", len(chatIDs), eventId, chatIDs)
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(map[string]any{"chat_ids": chatIDs})

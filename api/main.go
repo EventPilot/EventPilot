@@ -30,7 +30,8 @@ func startCronWorker(h *handlers.CronHandler, interval time.Duration) {
 }
 
 func main() {
-	_ = godotenv.Load("../.env")
+	_ = godotenv.Load("./.env")
+	_ = godotenv.Load("./api/.env")
 
 	mux := http.NewServeMux()
 
