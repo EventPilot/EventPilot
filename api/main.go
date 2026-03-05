@@ -10,6 +10,7 @@ import (
 	"eventpilot/api/handlers"
 	"eventpilot/api/middleware"
 
+	"github.com/joho/godotenv"
 	"github.com/supabase-community/supabase-go"
 )
 
@@ -29,6 +30,8 @@ func startCronWorker(h *handlers.CronHandler, interval time.Duration) {
 }
 
 func main() {
+	_ = godotenv.Load("../.env")
+
 	mux := http.NewServeMux()
 
 	supabaseClient, err := supabase.NewClient(os.Getenv("SUPABASE_URL"), os.Getenv("SUPABASE_SERVICE_ROLE_KEY"), nil)
@@ -37,9 +40,9 @@ func main() {
 	}
 
 	chatHandler := &handlers.ChatHandler{SupabaseClient: supabaseClient}
-	cronHandler := &handlers.CronHandler{SupabaseClient: supabaseClient}
+	// cronHandler := &handlers.CronHandler{SupabaseClient: supabaseClient}
 
-	startCronWorker(cronHandler, time.Hour)
+	// startCronWorker(cronHandler, time.Hour)
 
 	mux.HandleFunc("POST /api/events", handlers.CreateEvent)
 	mux.HandleFunc("PATCH /api/events/{id}", handlers.UpdateEvent)

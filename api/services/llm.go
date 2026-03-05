@@ -37,7 +37,7 @@ func GenerateInitialMessage(ctx context.Context, member models.EventMembersWithD
 	}
 	defer client.Close()
 
-	model := client.GenerativeModel("gemini-2.0-flash")
+	model := client.GenerativeModel("gemini-2.5-flash")
 	model.SetMaxOutputTokens(200)
 	model.SystemInstruction = &genai.Content{
 		Parts: []genai.Part{genai.Text(buildSystemPrompt())},
