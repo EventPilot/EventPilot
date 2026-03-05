@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -10,6 +11,8 @@ import (
 	"os"
 	"time"
 
+	"github.com/anthropics/anthropic-sdk-go"
+	"github.com/anthropics/anthropic-sdk-go/option"
 	"github.com/supabase-community/supabase-go"
 )
 
@@ -70,16 +73,21 @@ type bskyCreateRecordResponse struct {
 
 func newSupabaseClient() (*supabase.Client, error) {
 	url := os.Getenv("SUPABASE_URL")
-	key := os.Getenv("SUPABASE_SERVICE_ROLE_KEY")
+	key := os.Getenv("SUPABASE_API_KEY")
 	if url == "" || key == "" {
-		return nil, fmt.Errorf("SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required")
+		return nil, fmt.Errorf("SUPABASE_URL and SUPABASE_API_KEY are required")
 	}
 	return supabase.NewClient(url, key, nil)
 }
 
-// generatePostContent calls Claude to draft a Bluesky post from event context.
+// generatePostContent calls Claude Haiku to draft a Bluesky post from event context.
 func generatePostContent(event EventDetails, media []MediaItem) (string, error) {
-	client := NewClient()
+	apiKey := os.Getenv("ANTHROPIC_API_KEY")
+	if apiKey == "" {
+		return "", fmt.Errorf("ANTHROPIC_API_KEY not set")
+	}
+
+	client := anthropic.NewClient(option.WithAPIKey(apiKey))
 
 	systemPrompt := `You are a social media copywriter for an engineering student organisation.
 Write a short, engaging Bluesky post (≤300 characters) celebrating a completed event.
@@ -91,14 +99,21 @@ Return ONLY the post text — no commentary, no quotes, no markdown.`
 		event.Title, event.EventDate, event.Description,
 	)
 
-	resp, err := client.SendMessage([]Message{{Role: "user", Content: userMsg}}, systemPrompt)
+	msg, err := client.Messages.New(context.Background(), anthropic.MessageNewParams{
+		Model:     anthropic.ModelClaudeHaiku4_5_20251001,
+		MaxTokens: 300,
+		System:    []anthropic.TextBlockParam{{Text: systemPrompt}},
+		Messages:  []anthropic.MessageParam{anthropic.NewUserMessage(anthropic.NewTextBlock(userMsg))},
+	})
 	if err != nil {
 		return "", fmt.Errorf("Claude API error: %w", err)
 	}
-	if len(resp.Content) == 0 {
-		return "", fmt.Errorf("empty response from Claude")
+	for _, block := range msg.Content {
+		if block.Type == "text" && block.Text != "" {
+			return block.Text, nil
+		}
 	}
-	return resp.Content[0].Text, nil
+	return "", fmt.Errorf("empty response from Claude")
 }
 
 // authenticateBluesky creates a Bluesky session and returns the access JWT + DID.

@@ -1,0 +1,28 @@
+{
+  "info": {
+    "name": "EventPilot",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8080",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Request Inputs for Event",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/events/{{event_id}}/chat/request-inputs",
+          "host": ["{{base_url}}"],
+          "path": ["api", "events", "{{event_id}}", "chat", "request-inputs"]
+        },
+        "description": "Triggers chat creation for all members of the given event. Set the `event_id` environment variable to a real past event ID from Supabase before sending."
+      }
+    }
+  ]
+}
