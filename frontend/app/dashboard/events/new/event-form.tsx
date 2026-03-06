@@ -74,7 +74,7 @@ export function EventForm() {
               <Field label="Event title" placeholder="Customer Rocket Launch — Artemis Demo" name="title" required />
               {/* <Field label="Client / partner" placeholder="Artemis Aerospace" /> */}
               <div className="grid grid-cols-2 gap-4">
-                <Field label="Event date" placeholder="" name="event_date" type="date" required />
+                <Field label="Event date" placeholder="" name="event_date" type="datetime-local" required />
                 <Field label="Location" placeholder="Wallops Flight Facility" name="location" />
               </div>
               <Field label="Description" placeholder="What is this milestone, and why it matters? (short)" name="description" tall required />

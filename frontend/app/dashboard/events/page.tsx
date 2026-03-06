@@ -1,20 +1,24 @@
-import { redirect } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
-import { AppShell } from '@/components/shell/app-shell'
-import { Card } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import Link from 'next/link'
-import { EventCard } from '@/components/domain/event-card'
+import { redirect } from "next/navigation";
+import { createClient } from "@/lib/supabase/server";
+import { AppShell } from "@/components/shell/app-shell";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import Link from "next/link";
+import { EventCard } from "@/components/domain/event-card";
+import { formatDateTime } from "@/components/helpers";
 
 export default async function EventsPage() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
 
   // Get events where the user is a member
   const { data: memberRows } = await supabase
-    .from('event_member')
-    .select(`
+    .from("event_member")
+    .select(
+      `
       role,
       event (
         id,
@@ -25,16 +29,15 @@ export default async function EventsPage() {
         location,
         status
       )
-    `)
-    .eq('user_id', user.id)
-    .order('created_at', { referencedTable: 'event', ascending: false })
+    `,
+    )
+    .eq("user_id", user.id);
 
-  const events = memberRows?.map((row: any) => ({
-    ...row.event,
-    role: row.role,
-  })) ?? []
-
-  console.log(events)
+  const events =
+    memberRows
+      ?.map((row: any) => ({ ...row.event, role: row.role }))
+      .sort((a: any, b: any) => a.event_date.localeCompare(b.event_date)) ?? [];
+  // console.log(events);
 
   return (
     <AppShell title="Events">
@@ -43,7 +46,7 @@ export default async function EventsPage() {
           <div>
             <div className="text-lg font-semibold">All events</div>
             <div className="text-sm text-gray-500 mt-1">
-              {events.length} event{events.length !== 1 ? 's' : ''}
+              {events.length} event{events.length !== 1 ? "s" : ""}
             </div>
           </div>
           <Link href="/dashboard/events/new">
@@ -56,7 +59,11 @@ export default async function EventsPage() {
             <EventCard
               key={e.id}
               title={e.title}
-              subtitle={e.location ? `${e.event_date} • ${e.location}`: `${e.event_date}`}
+              subtitle={
+                e.location
+                  ? `${formatDateTime(e.event_date)} • ${e.location}`
+                  : `${formatDateTime(e.event_date)}`
+              }
               status={e.status}
               role={e.role}
               href={`/dashboard/events/${e.id}`}
@@ -64,5 +71,6 @@ export default async function EventsPage() {
           ))}
         </div>
       </Card>
-    </AppShell>)
+    </AppShell>
+  );
 }

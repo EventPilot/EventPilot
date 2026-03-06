@@ -1,9 +1,10 @@
-'use client'
+"use client";
 
 import { useTransition } from 'react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
-import { deleteEventAction, markEventFinishedAction } from '@/app/dashboard/events/[id]/actions'
+import { deleteEventAction, markEventFinishedAction } from '@/app/dashboard/events/[id]/actions';
+
 
 export function EventActions({ eventId }: { eventId: string}) {
   const [isPending, startTransition] = useTransition()

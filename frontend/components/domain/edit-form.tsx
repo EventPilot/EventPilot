@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { updateEventAction } from '@/app/dashboard/events/[id]/actions'
+import { toLocalDateTimeValue } from '../helpers'
 
 interface EventData {
   id: string
@@ -45,6 +46,10 @@ export function EditEventForm({ event }: { event: EventData }) {
   const router = useRouter()
 
   function handleSubmit(formData: FormData) {
+    const localDate = formData.get('event_date') as string
+    const isoDate = new Date(localDate).toISOString()
+    formData.set('event_date', isoDate)
+    
     startTransition(async () => {
       await updateEventAction(event.id, formData)
     })
@@ -57,7 +62,7 @@ export function EditEventForm({ event }: { event: EventData }) {
 
         <div className="mt-6 space-y-5">
           <Field label="Event title" name="title" defaultValue={event.title} required />
-          <Field label="Event date" name="event_date" type="date" defaultValue={event.event_date} required />
+          <Field label="Event date" name="event_date" type="datetime-local" defaultValue={toLocalDateTimeValue(event.event_date)} required />
           <Field label="Location" name="location" defaultValue={event.location} />
           <Field label="Description" name="description" defaultValue={event.description} tall required />
         </div>

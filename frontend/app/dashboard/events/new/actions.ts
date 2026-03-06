@@ -15,12 +15,19 @@ export async function createEvent(formData: FormData) {
   const title = formData.get("title") as string;
   const description = formData.get("description") as string;
   const event_date = formData.get("event_date") as string;
+  const event_date_iso = new Date(event_date).toISOString(); // convert event_date to supabase time format
   const location = (formData.get("location") as string) ?? "";
 
   // Insert the event
   const { error: eventError } = await supabase
     .from("event")
-    .insert({ id: eventId, title, description, event_date, location });
+    .insert({
+      id: eventId,
+      title,
+      description,
+      event_date: event_date_iso,
+      location,
+    });
 
   if (eventError) throw new Error(eventError?.message);
 

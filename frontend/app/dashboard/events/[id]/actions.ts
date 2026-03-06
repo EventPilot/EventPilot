@@ -28,6 +28,7 @@ export async function deleteEventAction(eventId: string) {
 
   redirect("/dashboard/events");
 }
+
 export async function markEventFinishedAction(eventId: string) {
   const supabase = await createClient();
   const {
@@ -48,7 +49,7 @@ export async function markEventFinishedAction(eventId: string) {
 
   const { error } = await supabase
     .from("event")
-    .update({ status: "Finished" })
+    .update({ status: "Inputs collected" })
     .eq("id", eventId);
 
   if (error) throw new Error(error.message);

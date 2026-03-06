@@ -15,7 +15,7 @@ export function EventCard({
   title: string
   subtitle: string
   status: string
-  role: EventRole
+  role: string
   href: string
 }) {
   return (

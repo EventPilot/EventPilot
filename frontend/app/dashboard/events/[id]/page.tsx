@@ -36,8 +36,8 @@ export default async function EventDetailCollectPage({ params }: { params: Promi
     )
   `)
   .eq('event_id', id)
-  console.log(members)
-  const currentUserRole = members?.find(m => m.user_id === user.id)?.role ?? 'member'
+  // console.log(members)
+  const currentUserRole = members?.find(m => m.user_id === user.id)?.role
 
   return (
     <AppShell title="Event detail">
