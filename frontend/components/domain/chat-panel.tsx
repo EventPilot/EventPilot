@@ -1,13 +1,14 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useTransition } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/cn'
+import { sendChatMessageAction } from '@/app/dashboard/events/[id]/post/actions'
 
 type Msg = { role: 'user' | 'assistant'; text: string }
 
-export function ChatPanel() {
+export function ChatPanel({ eventId }: { eventId: string }) {
   const [messages, setMessages] = useState<Msg[]>([
     {
       role: 'assistant',
@@ -22,6 +23,7 @@ export function ChatPanel() {
     { role: 'assistant', text: 'Customer demo complete: stable ascent, clean separation, 98% trajectory match.' },
   ])
   const [input, setInput] = useState('')
+  const [isPending, startTransition] = useTransition()
 
   const chips = useMemo(() => ['Shorten', 'More technical', 'Add CTA', 'Make it hype', 'LinkedIn version'], [])
 
@@ -30,9 +32,10 @@ export function ChatPanel() {
     if (!t) return
     setMessages((m) => [...m, { role: 'user', text: t }])
     setInput('')
-    setTimeout(() => {
-      setMessages((m) => [...m, { role: 'assistant', text: 'Got it — I’ll rewrite it in that direction. (LLM response placeholder)' }])
-    }, 400)
+    startTransition(async () => {
+      await sendChatMessageAction(eventId, t)
+      setMessages((m) => [...m, { role: 'assistant', text: 'Got it — working on it. (LLM response placeholder)' }])
+    })
   }
 
   return (
@@ -70,10 +73,11 @@ export function ChatPanel() {
         <input
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="Ask: rewrite, add CTA, generate LinkedIn…"
+          onKeyDown={(e) => e.key === 'Enter' && send(input)}
+          placeholder="Ask: rewrite, add CTA, generate LinkedIn..."
           className="h-12 flex-1 rounded-2xl border border-gray-200 bg-white px-4 text-sm outline-none"
         />
-        <Button onClick={() => send(input)}>Send</Button>
+        <Button onClick={() => send(input)} disabled={isPending}>Send</Button>
       </div>
 
       <div className="mt-4 rounded-full border border-gray-200 bg-indigo-50 px-4 py-2 text-center text-xs text-gray-600">
