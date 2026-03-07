@@ -20,7 +20,7 @@ func (h *CronHandler) ProcessCompletedEvents(ctx context.Context) error {
 		ID string `json:"id"`
 	}
 	var events []eventRow
-	_, err := h.SupabaseClient.From("events").
+	_, err := h.SupabaseClient.From("event").
 		Select("id", "", false).
 		Lte("event_date", today).
 		ExecuteTo(&events)
@@ -37,7 +37,7 @@ func (h *CronHandler) ProcessCompletedEvents(ctx context.Context) error {
 	for _, event := range events {
 		// Idempotency: skip events that already have chats created.
 		var chats []chatRow
-		_, err := h.SupabaseClient.From("chats").
+		_, err := h.SupabaseClient.From("chat").
 			Select("id", "", false).
 			Eq("event_id", event.ID).
 			Limit(1, "").
