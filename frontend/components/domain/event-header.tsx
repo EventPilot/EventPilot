@@ -31,7 +31,7 @@ export function EventHeader({ event, role, rightSlot }: { event: EventData; role
             <StatusPill status={event.status} />
           </div>
         </div>
-        {role === "Owner" && (rightSlot ?? <EventActions eventId={event.id}/>)}
+        {role === "Owner" && (rightSlot ?? <EventActions eventId={event.id} status={event.status}/>)}
       </div>
     </Card>
   )

@@ -49,7 +49,7 @@ export async function markEventFinishedAction(eventId: string) {
 
   const { error } = await supabase
     .from("event")
-    .update({ status: "Inputs collected" })
+    .update({ status: "Awaiting inputs" })
     .eq("id", eventId);
 
   if (error) throw new Error(error.message);

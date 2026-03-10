@@ -1,26 +1,39 @@
 "use client";
 
-import { useTransition } from 'react'
-import Link from 'next/link'
-import { Button } from '@/components/ui/button'
-import { deleteEventAction, markEventFinishedAction } from '@/app/dashboard/events/[id]/actions';
+import { useTransition } from "react";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import {
+  deleteEventAction,
+  markEventFinishedAction,
+} from "@/app/dashboard/events/[id]/actions";
 
-
-export function EventActions({ eventId }: { eventId: string}) {
-  const [isPending, startTransition] = useTransition()
+export function EventActions({
+  eventId,
+  status,
+}: {
+  eventId: string;
+  status: string;
+}) {
+  const [isPending, startTransition] = useTransition();
 
   function handleDelete() {
-    if (!confirm('Are you sure? This will remove all members and delete the event.')) return
+    if (
+      !confirm(
+        "Are you sure? This will remove all members and delete the event.",
+      )
+    )
+      return;
 
     startTransition(async () => {
-      await deleteEventAction(eventId)
-    })
+      await deleteEventAction(eventId);
+    });
   }
 
   function handleMarkFinished() {
     startTransition(async () => {
-      await markEventFinishedAction(eventId)
-    })
+      await markEventFinishedAction(eventId);
+    });
   }
 
   return (
@@ -31,12 +44,18 @@ export function EventActions({ eventId }: { eventId: string}) {
       <Link href={`/dashboard/events/${eventId}/edit`}>
         <Button variant="secondary">Edit event</Button>
       </Link>
-      <Button variant="secondary" onClick={handleMarkFinished} disabled={isPending}>
-        {isPending ? 'Updating...' : 'Mark as finished'}
-      </Button>
+      {status === "Scheduled" && (
+        <Button
+          variant="success"
+          onClick={handleMarkFinished}
+          disabled={isPending}
+        >
+          {isPending ? "Updating..." : "Mark as finished"}
+        </Button>
+      )}
       <Button variant="danger" onClick={handleDelete} disabled={isPending}>
-        {isPending ? 'Deleting...' : 'Delete event'}
+        {isPending ? "Deleting..." : "Delete event"}
       </Button>
     </div>
-  )
+  );
 }
