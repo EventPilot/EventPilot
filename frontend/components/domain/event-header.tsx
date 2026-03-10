@@ -1,3 +1,5 @@
+"use client"
+
 import { Card } from '@/components/ui/card'
 import { StatusPill } from '@/components/ui/status-pill'
 import { EventActions } from './event-actions'

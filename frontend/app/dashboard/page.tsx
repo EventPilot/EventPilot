@@ -6,8 +6,6 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { EventCard } from "@/components/domain/event-card";
 import { TaskCard } from "@/components/domain/task-card";
-
-import { formatDateTime } from "@/components/helpers";
 import { listUpcomingEvents } from "@/lib/data/upcoming-events";
 
 export default async function DashboardHomePage() {
@@ -52,11 +50,8 @@ export default async function DashboardHomePage() {
                 <EventCard
                   key={e.id}
                   title={e.title}
-                  subtitle={
-                    e.location
-                      ? `${formatDateTime(e.event_date)} • ${e.location}`
-                      : `${formatDateTime(e.event_date)}`
-                  }
+                  eventDate={e.event_date}
+                  location={e.location}
                   status={e.status}
                   role={e.role}
                   href={`/dashboard/events/${e.id}`}
