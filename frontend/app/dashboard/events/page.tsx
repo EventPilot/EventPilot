@@ -5,7 +5,6 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { EventCard } from "@/components/domain/event-card";
-import { formatDateTime } from "@/components/helpers";
 
 export default async function EventsPage() {
   const supabase = await createClient();
@@ -59,11 +58,8 @@ export default async function EventsPage() {
             <EventCard
               key={e.id}
               title={e.title}
-              subtitle={
-                e.location
-                  ? `${formatDateTime(e.event_date)} • ${e.location}`
-                  : `${formatDateTime(e.event_date)}`
-              }
+              eventDate={e.event_date}
+              location={e.location}
               status={e.status}
               role={e.role}
               href={`/dashboard/events/${e.id}`}
