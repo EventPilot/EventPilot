@@ -1,7 +1,7 @@
 import { cn } from '@/lib/cn'
 
 type Props = React.ButtonHTMLAttributes<HTMLButtonElement> & {
-  variant?: 'primary' | 'secondary' | 'danger'
+  variant?: 'primary' | 'secondary' | 'danger' | 'success'
   size?: 'sm' | 'md'
 }
 
@@ -12,6 +12,7 @@ export function Button({ className, variant = 'primary', size = 'md', ...props }
   const variants: Record<string, string> = {
     primary: 'bg-blue-600 border-blue-600 text-white hover:bg-blue-700',
     secondary: 'bg-white border-gray-200 text-gray-900 hover:bg-gray-50',
+    success: 'bg-green-600 border-green-600 text-white hover:bg-green-700',
     danger: 'bg-red-600 border-red-600 text-white hover:bg-red-700',
   }
 

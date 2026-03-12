@@ -3,7 +3,6 @@ import { cn } from '@/lib/cn'
 const DOT: Record<string, string> = {
   Scheduled: 'bg-sky-500',
   'Awaiting inputs': 'bg-amber-500',
-  'Inputs collected': 'bg-purple-500',
   'Draft ready': 'bg-green-600',
   Published: 'bg-green-600',
 }

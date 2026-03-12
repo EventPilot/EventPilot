@@ -1,42 +1,70 @@
 "use client";
 
-import { useTransition } from 'react'
-import Link from 'next/link'
-import { Button } from '@/components/ui/button'
-import { deleteEventAction, markEventFinishedAction } from '@/app/dashboard/events/[id]/actions';
+import { useTransition } from "react";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import {
+  deleteEventAction,
+  markEventFinishedAction,
+} from "@/app/dashboard/events/[id]/actions";
 
+function IconButton({ label, children, ...props }: { label: string } & React.ComponentProps<typeof Button>) {
+  return (
+    <div className="relative group">
+      <Button {...props}>{children}</Button>
+      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 rounded-md bg-gray-800 text-white text-xs whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+        {label}
+      </div>
+    </div>
+  );
+}
 
-export function EventActions({ eventId }: { eventId: string}) {
-  const [isPending, startTransition] = useTransition()
+export function EventActions({ eventId, status }: { eventId: string; status: string }) {
+  const [isPending, startTransition] = useTransition();
 
   function handleDelete() {
-    if (!confirm('Are you sure? This will remove all members and delete the event.')) return
-
-    startTransition(async () => {
-      await deleteEventAction(eventId)
-    })
+    if (!confirm("Are you sure? This will remove all members and delete the event.")) return;
+    startTransition(async () => { await deleteEventAction(eventId); });
   }
 
   function handleMarkFinished() {
-    startTransition(async () => {
-      await markEventFinishedAction(eventId)
-    })
+    startTransition(async () => { await markEventFinishedAction(eventId); });
   }
 
   return (
-    <div className="flex items-center gap-3">
+    <div className="flex gap-2">
       <Link href={`/dashboard/events/${eventId}/post`}>
-        <Button>Generate draft</Button>
+        <IconButton label="Generate draft" className="w-full">
+          <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+            <path d="M7.657 6.247c.11-.33.576-.33.686 0l.645 1.937a2.89 2.89 0 0 0 1.829 1.828l1.936.645c.33.11.33.576 0 .686l-1.937.645a2.89 2.89 0 0 0-1.828 1.829l-.645 1.936a.361.361 0 0 1-.686 0l-.645-1.937a2.89 2.89 0 0 0-1.828-1.828l-1.937-.645a.361.361 0 0 1 0-.686l1.937-.645a2.89 2.89 0 0 0 1.828-1.828zM3.794 1.148a.217.217 0 0 1 .412 0l.387 1.162c.173.518.579.924 1.097 1.097l1.162.387a.217.217 0 0 1 0 .412l-1.162.387A1.73 1.73 0 0 0 4.593 5.69l-.387 1.162a.217.217 0 0 1-.412 0L3.407 5.69A1.73 1.73 0 0 0 2.31 4.593l-1.162-.387a.217.217 0 0 1 0-.412l1.162-.387A1.73 1.73 0 0 0 3.407 2.31zM10.863.099a.145.145 0 0 1 .274 0l.258.774c.115.346.386.617.732.732l.774.258a.145.145 0 0 1 0 .274l-.774.258a1.16 1.16 0 0 0-.732.732l-.258.774a.145.145 0 0 1-.274 0l-.258-.774a1.16 1.16 0 0 0-.732-.732L9.1 2.137a.145.145 0 0 1 0-.274l.774-.258c.346-.115.617-.386.732-.732z"/>
+          </svg>
+        </IconButton>
       </Link>
+
       <Link href={`/dashboard/events/${eventId}/edit`}>
-        <Button variant="secondary">Edit event</Button>
+        <IconButton label="Edit event" variant="secondary" className="w-full">
+          <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+            <path d="M15.502 1.94a.5.5 0 0 1 0 .706L14.459 3.69l-2-2L13.502.646a.5.5 0 0 1 .707 0l1.293 1.293zm-1.75 2.456-2-2L4.939 9.21a.5.5 0 0 0-.121.196l-.805 2.414a.25.25 0 0 0 .316.316l2.414-.805a.5.5 0 0 0 .196-.12l6.813-6.814z"/>
+            <path fillRule="evenodd" d="M1 13.5A1.5 1.5 0 0 0 2.5 15h11a1.5 1.5 0 0 0 1.5-1.5v-6a.5.5 0 0 0-1 0v6a.5.5 0 0 1-.5.5h-11a.5.5 0 0 1-.5-.5v-11a.5.5 0 0 1 .5-.5H9a.5.5 0 0 0 0-1H2.5A1.5 1.5 0 0 0 1 2.5z"/>
+          </svg>
+        </IconButton>
       </Link>
-      <Button variant="secondary" onClick={handleMarkFinished} disabled={isPending}>
-        {isPending ? 'Updating...' : 'Mark as finished'}
-      </Button>
-      <Button variant="danger" onClick={handleDelete} disabled={isPending}>
-        {isPending ? 'Deleting...' : 'Delete event'}
-      </Button>
+
+      {status === "Scheduled" && (
+        <IconButton label="Mark as finished" variant="success" onClick={handleMarkFinished} disabled={isPending} className="w-full">
+          <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+            <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16"/>
+            <path d="m10.97 4.97-.02.022-3.473 4.425-2.093-2.094a.75.75 0 0 0-1.06 1.06L6.97 11.03a.75.75 0 0 0 1.079-.02l3.992-4.99a.75.75 0 0 0-1.071-1.05"/>
+          </svg>
+        </IconButton>
+      )}
+
+      <IconButton label="Delete event" variant="danger" onClick={handleDelete} disabled={isPending} className="w-full">
+        <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+          <path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5m2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5m3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0z"/>
+          <path d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4zM2.5 3h11V2h-11z"/>
+        </svg>
+      </IconButton>
     </div>
-  )
+  );
 }
