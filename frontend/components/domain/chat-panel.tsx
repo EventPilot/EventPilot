@@ -39,7 +39,7 @@ export function ChatPanel({ eventId }: { eventId: string }) {
   }
 
   return (
-    <Card className="p-5">
+    <Card className="p-5 flex flex-col h-full min-h-0">
       <div className="text-lg font-semibold">Chat with AI</div>
       <div className="text-sm text-gray-500 mt-1">Refine the post by talking to the model.</div>
 
@@ -55,7 +55,7 @@ export function ChatPanel({ eventId }: { eventId: string }) {
         ))}
       </div>
 
-      <div className="mt-4 h-[480px] overflow-auto rounded-2xl border border-gray-200 bg-gray-50 p-4 space-y-3">
+      <div className="mt-4 flex-1 min-h-0 overflow-auto rounded-2xl border border-gray-200 bg-gray-50 p-4 space-y-3">
         {messages.map((m, idx) => (
           <div
             key={idx}
