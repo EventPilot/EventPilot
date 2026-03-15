@@ -10,7 +10,7 @@ export default async function NewEventPage() {
 
   return (
     <AppShell title="Create event">
-      <EventForm />
+      <EventForm ownerEmail={user?.email ?? ''} />
     </AppShell>
   )
 }
