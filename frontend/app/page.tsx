@@ -36,11 +36,6 @@ export default async function HomePage() {
         <div className="mt-8 flex items-center gap-3">
           <Link href="/login"><Button>Login</Button></Link>
           <Link href="/signup"><Button variant="secondary">Sign up</Button></Link>
-          <Link href="/dashboard" className="ml-auto text-sm text-gray-500 hover:underline">Demo (requires auth)</Link>
-        </div>
-
-        <div className="mt-6 text-xs text-gray-500">
-          UI is hard-coded for now. Next step: wire Events/Inputs/Drafts to Supabase tables.
         </div>
       </Card>
     </div>

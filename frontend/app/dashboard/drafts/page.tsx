@@ -7,9 +7,10 @@ export default async function DraftsPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
+  const { data: profile } = await supabase.from('user').select('name').eq('id', user.id).single()
 
   return (
-    <AppShell title="Drafts">
+    <AppShell title="Drafts" userName={profile?.name ?? user.email?.split('@')[0] ?? 'Account'} userSubline={user.email ?? ''}>
       <Card className="p-6">
         <div className="text-lg font-semibold">Drafts</div>
         <div className="text-sm text-gray-500 mt-1">All generated drafts waiting for approval.</div>

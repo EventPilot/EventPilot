@@ -13,6 +13,8 @@ export default async function EventsPage() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
+  const { data: profile } = await supabase.from('user').select('name').eq('id', user.id).single()
+
   // Get events where the user is a member
   const { data: memberRows } = await supabase
     .from("event_member")
@@ -39,7 +41,7 @@ export default async function EventsPage() {
   // console.log(events);
 
   return (
-    <AppShell title="Events">
+    <AppShell title="Events" userName={profile?.name ?? user.email?.split('@')[0] ?? 'Account'} userSubline={user.email ?? ''}>
       <Card className="p-6">
         <div className="flex items-center justify-between gap-4">
           <div>

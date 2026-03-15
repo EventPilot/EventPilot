@@ -7,9 +7,10 @@ export default async function InboxPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
+  const { data: profile } = await supabase.from('user').select('name').eq('id', user.id).single()
 
   return (
-    <AppShell title="Inbox">
+    <AppShell title="Inbox" userName={profile?.name ?? user.email?.split('@')[0] ?? 'Account'} userSubline={user.email ?? ''}>
       <Card className="p-6">
         <div className="text-lg font-semibold">Inbox</div>
         <div className="text-sm text-gray-500 mt-1">Role responses, reminders, and approvals will show up here.</div>

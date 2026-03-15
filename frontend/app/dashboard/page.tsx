@@ -18,18 +18,11 @@ export default async function DashboardHomePage() {
     redirect("/login");
   }
 
-  const { data: profile } = await supabase
-    .from("user")
-    .select("name")
-    .eq("id", user.id)
-    .single();
-
-  const name = profile?.name ?? user.email?.split("@")[0] ?? "Account";
-
+  const { data: profile } = await supabase.from('user').select('name').eq('id', user.id).single()
   const events = await listUpcomingEvents();
 
   return (
-    <AppShell title="Home" userName={name} userSubline="Owner • Workspace A">
+    <AppShell title="Home" userName={profile?.name ?? user.email?.split('@')[0] ?? 'Account'} userSubline={user.email ?? ''}>
       <div className="grid grid-cols-12 gap-6">
         <div className="col-span-8 space-y-6">
           <Card className="p-6">
