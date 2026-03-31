@@ -41,11 +41,6 @@ type ChatMessage struct {
 	CreatedAt  string `json:"created_at"`
 }
 
-type ChatParticipant struct {
-	ChatID int `json:"chat_id"`
-	UserID int `json:"user_id"`
-}
-
 type Post struct {
 	ID        int    `json:"id"`
 	EventID   int    `json:"event_id"`

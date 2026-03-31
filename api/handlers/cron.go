@@ -22,6 +22,7 @@ func (h *CronHandler) ProcessCompletedEvents(ctx context.Context) error {
 	var events []eventRow
 	_, err := h.SupabaseClient.From("event").
 		Select("id", "", false).
+		Eq("status", "Awaiting inputs").
 		Lte("event_date", today).
 		ExecuteTo(&events)
 	if err != nil {

@@ -61,6 +61,7 @@ func requestInputsForEvent(ctx context.Context, client *supabase.Client, eventId
 				"p_initial_message": message,
 			}
 			id := client.Rpc("create_chat_with_initial_message", "", rpcBody)
+			log.Printf("[requestInputsForEvent] RPC response for member %s: %q", m.UserID, id)
 			if id == "" {
 				ch <- rpcResult{err: errors.New("failed to create chat")}
 			} else {
