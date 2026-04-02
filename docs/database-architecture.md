@@ -47,12 +47,13 @@ Sql is a better fit for EventPilot because our core data model is relational. Us
 
 ### chats
 
-- each event has one chat
+- each event member has one private chat per event
 
 | column     | type        | notes         |
 | ---------- | ----------- | ------------- |
 | id         | uuid        | primary key   |
 | event_id   | uuid        | foreign key   |
+| user_id    | uuid        | foreign key   |
 | created_at | timestamptz | default now() |
 
 ### chat_messages

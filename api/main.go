@@ -9,6 +9,7 @@ import (
 
 	"eventpilot/api/handlers"
 	"eventpilot/api/middleware"
+	"eventpilot/api/services"
 
 	"github.com/joho/godotenv"
 	"github.com/supabase-community/supabase-go"
@@ -40,14 +41,17 @@ func main() {
 		log.Fatalf("Error creating supabase client: %v", err)
 	}
 
-	chatHandler := &handlers.ChatHandler{SupabaseClient: supabaseClient}
+	chatHandler := &handlers.ChatHandler{SupabaseClient: supabaseClient, RunManager: services.NewRunManager(supabaseClient)}
 	cronHandler := &handlers.CronHandler{SupabaseClient: supabaseClient}
 
 	startCronWorker(cronHandler, time.Hour)
 
 	mux.HandleFunc("POST /api/events", handlers.CreateEvent)
 	mux.HandleFunc("PATCH /api/events/{id}", handlers.UpdateEvent)
-	mux.HandleFunc("POST /api/events/{id}/chat/messages", handlers.CreateChatMessage)
+	mux.HandleFunc("POST /api/events/{id}/chat/messages", chatHandler.CreateChatMessage)
+	mux.HandleFunc("GET /api/events/{id}/chat/run", chatHandler.GetActiveRun)
+	mux.HandleFunc("POST /api/agent-runs/{runId}/approve", chatHandler.ApproveRun)
+	mux.HandleFunc("GET /api/agent-runs/{runId}/stream", chatHandler.StreamRun)
 	mux.HandleFunc("POST /api/events/{id}/chat/request-inputs", chatHandler.RequestInputs)
 	mux.HandleFunc("POST /api/events/{id}/media", handlers.UploadMedia)
 	mux.HandleFunc("POST /api/events/{id}/generate-post", handlers.GeneratePost)

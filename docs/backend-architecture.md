@@ -76,14 +76,14 @@ Your task breakdown maps to these backend flows:
 | # | Task | Backend responsibility |
 |---|------|-------------------------|
 | 1 | **Database calendar → LLM** | Store events in Supabase; when “event done” or “request post,” load event + metadata and call LLM to generate **chat messages** (prompts) for different roles (owner, photographer, customer). |
-| 2 | **LLM → chat messages to users** | Persist “prompt requests” (per event, per role); expose endpoint so frontend/email can show “Event Pilot is asking you for input.” Optionally send email/link with prompt. |
+| 2 | **LLM → chat messages to users** | Persist one private chat per event member; expose endpoint so frontend/email can show “Event Pilot is asking you for input.” Optionally send email/link with prompt. |
 | 3 | **LLM + user response → create post** | When users submit text/media via chat messages (sender_type: "user"), store in `chat_messages`; call LLM with event context + all chat messages to **generate post copy** (and optionally image selection). |
 | 4 | **Post on X** | Call X API v2 to create a tweet (text + optional media). Store post ID, status, and URL in `posts` table. |
 
 End-to-end:
 
 1. **Create event** → API writes to `events` table in Supabase; create `event_owners` records for user-event relationships.
-2. **Mark event “done”** (or cron/scheduled trigger) → API loads event, calls LLM to generate initial chat messages per role (Owner, Photographer, Customers).
+2. **Mark event “done”** (or cron/scheduled trigger) → API loads event, calls LLM to generate one initial private chat message per event member.
 4. **Chat interaction** → API creates “prompt request” records; frontend/notifications show “please submit your input” with the prompt text.
 5. **User submits response** → API stores response (and optional media URLs) linked to event + role.
 6. **Generate post** → When enough responses (e.g., owner + at least one other) or manual “generate,” API calls LLM with event + all chat messages → draft post stored in `posts` table.
@@ -98,7 +98,7 @@ Vercel supports **Go serverless functions** via the Go runtime. Recommended rout
 | Method | Path | Purpose |
 |--------|------|---------|
 | `GET` | `/api/events` | List events (with optional filters: upcoming, past, by user). |
-| `POST` | `/api/events` | Create event (and associated chat record). |
+| `POST` | `/api/events` | Create event. |
 | `GET` | `/api/events/:id` | Get single event with owners. |
 | `PATCH` | `/api/events/:id` | Update event (e.g. mark “done”). |
 | `POST` | `/api/events/:id/chat/request-inputs` | Trigger “event done” → LLM generates prompts per role; persist prompt requests. |
