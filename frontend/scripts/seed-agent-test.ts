@@ -3,10 +3,21 @@ import { resolve } from 'path'
 import { fileURLToPath } from 'url'
 import { createClient, type Session, type User } from '@supabase/supabase-js'
 
+function createSupabaseClient() {
+  return createClient(supabaseUrl!, supabaseAnonKey!, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+  })
+}
+
+type SupabaseClient = ReturnType<typeof createSupabaseClient>
+
 type AuthResult = {
   user: User
   session: Session
-  client: ReturnType<typeof createClient>
+  client: SupabaseClient
 }
 
 type EventRow = {
@@ -21,11 +32,11 @@ type EventRow = {
 type EventMemberRow = {
   user_id: string
   role: string
-  user?: {
+  user?: Array<{
     id: string
     name?: string | null
     email?: string | null
-  } | null
+  }> | null
 }
 
 type AgentTask = {
@@ -104,7 +115,8 @@ async function main() {
     console.log('  none')
   } else {
     for (const member of otherMembers) {
-      const label = member.user?.name ?? member.user?.email ?? member.user_id
+      const relatedUser = member.user?.[0]
+      const label = relatedUser?.name ?? relatedUser?.email ?? member.user_id
       console.log(`  - ${label} (${member.user_id}) role=${member.role}`)
     }
   }
@@ -123,12 +135,7 @@ async function main() {
 }
 
 async function loginExistingUser(): Promise<AuthResult> {
-  const client = createClient(supabaseUrl!, supabaseAnonKey!, {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-    },
-  })
+  const client = createSupabaseClient()
 
   const login = await client.auth.signInWithPassword({
     email: testUserEmail,
@@ -146,7 +153,7 @@ async function loginExistingUser(): Promise<AuthResult> {
   }
 }
 
-async function loadEvent(client: ReturnType<typeof createClient>): Promise<EventRow> {
+async function loadEvent(client: SupabaseClient): Promise<EventRow> {
   const { data, error } = await client
     .from('event')
     .select('id, title, description, event_date, location, status')
@@ -160,7 +167,7 @@ async function loadEvent(client: ReturnType<typeof createClient>): Promise<Event
   return data
 }
 
-async function loadEventMembers(client: ReturnType<typeof createClient>): Promise<EventMemberRow[]> {
+async function loadEventMembers(client: SupabaseClient): Promise<EventMemberRow[]> {
   const { data, error } = await client
     .from('event_member')
     .select('user_id, role, user(id, name, email)')

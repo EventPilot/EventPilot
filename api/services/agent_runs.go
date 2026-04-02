@@ -294,9 +294,9 @@ func (m *RunManager) StartRun(ctx context.Context, runID string) error {
 
 	now := time.Now().UTC()
 	update := map[string]any{
-		"status":      runStatusRunning,
-		"started_at":  now,
-		"failed_at":   nil,
+		"status":       runStatusRunning,
+		"started_at":   now,
+		"failed_at":    nil,
 		"completed_at": nil,
 	}
 	if _, _, err := m.client.From("agent_run").Update(update, "", "").Eq("id", runID).Execute(); err != nil {
@@ -685,11 +685,11 @@ func BuildRunPlan(ctx context.Context, event models.Event, requester models.User
 
 	if len(tasks) == 0 {
 		tasks = []AgentTask{{
-			ID:         uuid.NewString(),
-			Position:   0,
-			Title:      "Review the request and prepare the next post update",
-			Kind:       "internal",
-			Status:     "pending",
+			ID:          uuid.NewString(),
+			Position:    0,
+			Title:       "Review the request and prepare the next post update",
+			Kind:        "internal",
+			Status:      "pending",
 			TaskPayload: map[string]interface{}{"title": "Review the request and prepare the next post update", "kind": "internal"},
 		}}
 	}

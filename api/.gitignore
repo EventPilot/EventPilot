@@ -12,3 +12,4 @@ go.work
 .env.local
 .idea/
 .vscode/
+.gocache/
