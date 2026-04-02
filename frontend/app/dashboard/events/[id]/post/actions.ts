@@ -2,37 +2,87 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import { randomUUID } from 'crypto'
+
+type AgentTask = {
+  id: string
+  title: string
+  kind: string
+  status: string
+  target_user_name?: string
+  target_role?: string
+  result?: string
+}
+
+export type AgentRun = {
+  id: string
+  chat_id: string
+  event_id: string
+  status: string
+  plan_summary: string
+  tasks: AgentTask[]
+  blocked_on_chat_id?: string
+}
+
+function apiBaseUrl() {
+  return (
+    process.env.EVENTPILOT_API_BASE_URL ??
+    process.env.NEXT_PUBLIC_API_BASE_URL ??
+    'http://localhost:8080'
+  )
+}
 
 export async function sendChatMessageAction(eventId: string, message: string) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  // Look up the chat for this event, or create one if it doesn't exist
-  let { data: chat } = await supabase
-    .from('chat')
-    .select('id')
-    .eq('event_id', eventId)
-    .single()
-
-  if (!chat) {
-    const { data: newChat, error: createError } = await supabase
-      .from('chat')
-      .insert({ id: randomUUID(), event_id: eventId })
-      .select('id')
-      .single()
-    if (createError) throw new Error(createError.message)
-    chat = newChat
+  const {
+    data: { session },
+  } = await supabase.auth.getSession()
+  if (!session?.access_token) {
+    throw new Error('Missing auth session')
   }
 
-  const { error } = await supabase.from('chat_message').insert({
-    id: randomUUID(),
-    chat_id: chat!.id,
-    sender_type: 'user',
-    sender_id: user.id,
-    message,
+  const response = await fetch(`${apiBaseUrl()}/api/events/${eventId}/chat/messages`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${session.access_token}`,
+    },
+    body: JSON.stringify({ message }),
+    cache: 'no-store',
   })
 
-  if (error) throw new Error(error.message)
+  if (!response.ok) {
+    throw new Error(await response.text())
+  }
+
+  return response.json() as Promise<{ chat_id: string; run: AgentRun | null }>
+}
+
+export async function approveAgentRunAction(runId: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/login')
+
+  const {
+    data: { session },
+  } = await supabase.auth.getSession()
+  if (!session?.access_token) {
+    throw new Error('Missing auth session')
+  }
+
+  const response = await fetch(`${apiBaseUrl()}/api/agent-runs/${runId}/approve`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${session.access_token}`,
+    },
+    cache: 'no-store',
+  })
+
+  if (!response.ok) {
+    throw new Error(await response.text())
+  }
+
+  return response.json() as Promise<AgentRun>
 }

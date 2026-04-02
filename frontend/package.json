@@ -6,7 +6,9 @@
     "dev": "next dev --webpack",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "seed:agent-test": "tsx scripts/seed-agent-test.ts",
+    "test:agent-run": "tsx scripts/seed-agent-test.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.8.0",
