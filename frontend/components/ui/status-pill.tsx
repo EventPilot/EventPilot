@@ -11,7 +11,7 @@ export function StatusPill({ status, className }: { status: string; className?: 
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-2 rounded-full border border-gray-200 bg-gray-100 px-3 py-1 text-xs text-gray-600',
+        'inline-flex items-center gap-2 rounded-full border border-gray-200 bg-gray-100 px-3 py-1 text-xs text-gray-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300',
         className
       )}
     >

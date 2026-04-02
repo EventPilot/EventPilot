@@ -25,13 +25,13 @@ function Field({
 }) {
   return (
     <div>
-      <div className="text-xs text-gray-500">{label}</div>
+      <div className="text-xs text-gray-500 dark:text-slate-400">{label}</div>
       {tall ? (
         <textarea
           name={name}
           placeholder={placeholder}
           required={required}
-          className="mt-2 w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm outline-none min-h-[90px]"
+          className="mt-2 min-h-[90px] w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-500"
         />
       ) : (
         <input
@@ -39,7 +39,7 @@ function Field({
           type={type}
           placeholder={placeholder}
           required={required}
-          className="mt-2 h-11 w-full rounded-xl border border-gray-200 bg-gray-50 px-4 text-sm outline-none"
+          className="mt-2 h-11 w-full rounded-xl border border-gray-200 bg-gray-50 px-4 text-sm outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-500"
         />
       )}
     </div>
@@ -66,14 +66,14 @@ function EmailInput({
         placeholder={placeholder}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="h-10 flex-1 rounded-xl border border-gray-200 bg-gray-50 px-4 text-sm outline-none"
+        className="h-10 flex-1 rounded-xl border border-gray-200 bg-gray-50 px-4 text-sm outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-500"
       />
       {/* remove button */}
       {showRemove && (
         <button
           type="button"
           onClick={onRemove}
-          className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+          className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:text-slate-500 dark:hover:bg-slate-800 dark:hover:text-slate-300"
           aria-label="Remove"
         >
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
@@ -99,8 +99,10 @@ function RoleRow({
   return (
     <label
       className={`flex items-center gap-3 rounded-xl border px-4 py-3 text-sm transition-colors ${
-        checked ? 'border-indigo-200 bg-indigo-50' : 'border-gray-200 bg-gray-50'
-      } ${locked ? 'cursor-default' : 'cursor-pointer hover:border-indigo-200'}`}
+        checked
+          ? 'border-indigo-200 bg-indigo-50 dark:border-blue-800 dark:bg-blue-950/50'
+          : 'border-gray-200 bg-gray-50 dark:border-slate-700 dark:bg-slate-900'
+      } ${locked ? 'cursor-default' : 'cursor-pointer hover:border-indigo-200 dark:hover:border-blue-700'}`}
     >
       <input
         type="checkbox"
@@ -109,8 +111,8 @@ function RoleRow({
         onChange={onToggle}
         className="h-4 w-4 rounded accent-indigo-600"
       />
-      <span className={locked ? 'text-gray-700' : ''}>{label}</span>
-      {locked && <span className="ml-auto text-xs text-gray-400">required</span>}
+      <span className={locked ? 'text-gray-700 dark:text-slate-200' : ''}>{label}</span>
+      {locked && <span className="ml-auto text-xs text-gray-400 dark:text-slate-500">required</span>}
     </label>
   )
 }
@@ -186,9 +188,9 @@ export function EventForm({ ownerEmail }: { ownerEmail: string }) {
         <div className="col-span-12">
           <Card className="p-4">
             <div className="flex items-center gap-3">
-              <span className="rounded-full border border-gray-200 bg-indigo-50 px-3 py-1 text-xs">1 Basics</span>
-              <span className="rounded-full border border-gray-200 bg-gray-50 px-3 py-1 text-xs text-gray-600">2 Post plan</span>
-              <span className="text-xs text-gray-500 ml-2">Fill in the event. Prompts can auto-trigger after it ends.</span>
+              <span className="rounded-full border border-gray-200 bg-indigo-50 px-3 py-1 text-xs dark:border-slate-700 dark:bg-blue-950/60 dark:text-slate-100">1 Basics</span>
+              <span className="rounded-full border border-gray-200 bg-gray-50 px-3 py-1 text-xs text-gray-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">2 Post plan</span>
+              <span className="ml-2 text-xs text-gray-500 dark:text-slate-400">Fill in the event. Prompts can auto-trigger after it ends.</span>
             </div>
           </Card>
         </div>
@@ -216,7 +218,7 @@ export function EventForm({ ownerEmail }: { ownerEmail: string }) {
             <div className="mt-5 space-y-5">
               {/* Roles */}
               <div>
-                <div className="text-xs text-gray-500">Roles to prompt</div>
+                <div className="text-xs text-gray-500 dark:text-slate-400">Roles to prompt</div>
                 <div className="mt-2 space-y-2">
                   {/* Owner — always on */}
                   <RoleRow label="Owner" checked locked />
@@ -262,7 +264,7 @@ export function EventForm({ ownerEmail }: { ownerEmail: string }) {
                       <button
                         type="button"
                         onClick={addEngineer}
-                        className="flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs text-indigo-600 hover:bg-indigo-50"
+                        className="flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs text-indigo-600 hover:bg-indigo-50 dark:text-blue-300 dark:hover:bg-blue-950/50"
                       >
                         <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
                           <path d="M6 1V11M1 6H11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
@@ -275,11 +277,11 @@ export function EventForm({ ownerEmail }: { ownerEmail: string }) {
               </div>
               {/* Tone */}
               <div>
-                <div className="text-xs text-gray-500">Tone</div>
+                <div className="text-xs text-gray-500 dark:text-slate-400">Tone</div>
                 <select
                   value={tone}
                   onChange={(e) => setTone(e.target.value)}
-                  className="mt-2 h-11 w-full rounded-xl border border-gray-200 bg-gray-50 px-4 text-sm outline-none appearance-none cursor-pointer"
+                  className="mt-2 h-11 w-full cursor-pointer appearance-none rounded-xl border border-gray-200 bg-gray-50 px-4 text-sm outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
                   style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M2 4L6 8L10 4' stroke='%239ca3af' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round' fill='none'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 14px center' }}
                 >
                   {TONE_OPTIONS.map((opt) => (
@@ -292,7 +294,7 @@ export function EventForm({ ownerEmail }: { ownerEmail: string }) {
 
           <Card className="p-6">
             <div className="text-lg font-semibold">Ready?</div>
-            <div className="text-sm text-gray-500 mt-1">
+            <div className="mt-1 text-sm text-gray-500 dark:text-slate-400">
               {activeRoleCount === 1
                 ? 'Only you will be prompted.'
                 : `${activeRoleCount} roles will be prompted.`}
@@ -307,12 +309,12 @@ export function EventForm({ ownerEmail }: { ownerEmail: string }) {
               </Button>
             </div>
             {error && (
-              <div className="mt-3 rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-xs text-red-600">
+              <div className="mt-3 rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-xs text-red-600 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300">
                 {error}
               </div>
             )}
-            <div className="mt-5 rounded-2xl border border-gray-200 bg-gray-50 p-4 text-xs text-gray-600">
-              <div className="font-medium text-gray-900">What happens next</div>
+            <div className="mt-5 rounded-2xl border border-gray-200 bg-gray-50 p-4 text-xs text-gray-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
+              <div className="font-medium text-gray-900 dark:text-slate-100">What happens next</div>
               <div className="mt-2">1) Event appears on Home</div>
               <div>2) Prompts auto-send after end time</div>
               <div>3) Draft generated for review</div>

@@ -20,13 +20,13 @@ function Field({ label, name, defaultValue, tall, type = 'text', required }: {
 }) {
   return (
     <div>
-      <div className="text-xs text-gray-500">{label}</div>
+      <div className="text-xs text-gray-500 dark:text-slate-400">{label}</div>
       {tall ? (
         <textarea
           name={name}
           defaultValue={defaultValue}
           required={required}
-          className="mt-2 w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm outline-none min-h-[90px]"
+          className="mt-2 min-h-[90px] w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
         />
       ) : (
         <input
@@ -34,7 +34,7 @@ function Field({ label, name, defaultValue, tall, type = 'text', required }: {
           type={type}
           defaultValue={defaultValue}
           required={required}
-          className="mt-2 h-11 w-full rounded-xl border border-gray-200 bg-gray-50 px-4 text-sm outline-none"
+          className="mt-2 h-11 w-full rounded-xl border border-gray-200 bg-gray-50 px-4 text-sm outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
         />
       )}
     </div>

@@ -6,6 +6,7 @@ import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { EventHeader } from '@/components/domain/event-header'
 import { EventDetailTabs } from '@/components/domain/event-detail-tabs'
+import { EventContextPanel } from '@/components/domain/event-context-panel'
 import { Timeline } from '@/components/domain/timeline'
 import { RoleInputs } from '@/components/domain/role-inputs'
 import { DraftPreview } from '@/components/domain/draft-preview'
@@ -52,6 +53,8 @@ export default async function EventDetailCollectPage({ params }: { params: Promi
             <Button variant="secondary" size="sm">Send reminder</Button>
           </div>
         </Card>
+
+        <EventContextPanel context={event.context} />
 
         {/* <div className="grid grid-cols-12 gap-6">
           <div className="col-span-4">

@@ -29,7 +29,7 @@ export default async function HomePage() {
           </div>
           <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4">
             <div className="text-sm font-medium">3) Publish</div>
-            <div className="text-xs text-gray-500 mt-1">Generate a draft, refine with chat, post to X (then LinkedIn/IG).</div>
+            <div className="text-xs text-gray-500 mt-1">Generate a draft, refine in the editor, post to X (then LinkedIn/IG).</div>
           </div>
         </div>
 
