@@ -40,6 +40,20 @@ export default async function EventDetailCollectPage({ params }: { params: Promi
   // console.log(members)
   const currentUserRole = members?.find(m => m.user_id === user.id)?.role
 
+  // Load media for this event
+  const { data: mediaRows } = await supabase
+    .from('media')
+    .select('id, storage_path')
+    .eq('event_id', id)
+    .order('created_at', { ascending: true })
+
+  const signedUrls = await Promise.all(
+    (mediaRows ?? []).map((row) =>
+      supabase.storage.from('event-media').createSignedUrl(row.storage_path, 60 * 60 * 24 * 7)
+    )
+  )
+  const mediaUrls = signedUrls.map((r) => r.data?.signedUrl ?? '')
+
   return (
     <AppShell title="Event detail">
       <div className="space-y-6">
@@ -54,7 +68,7 @@ export default async function EventDetailCollectPage({ params }: { params: Promi
           </div>
         </Card>
 
-        <EventContextPanel context={event.context} />
+        <EventContextPanel context={event.context} mediaUrls={mediaUrls} />
 
         {/* <div className="grid grid-cols-12 gap-6">
           <div className="col-span-4">

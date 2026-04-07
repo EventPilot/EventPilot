@@ -155,14 +155,24 @@ function RunArtifact({
   )
 }
 
+export type UploadedImage = {
+  id: string
+  file: File | null
+  url: string
+}
+
 export function AgentWorkspace({
   eventId,
   initialEntries,
   initialRun,
+  images,
+  onImagesChange,
 }: {
   eventId: string
   initialEntries: ChatMessageEntry[]
   initialRun: AgentRun | null
+  images: UploadedImage[]
+  onImagesChange: (images: UploadedImage[]) => void
 }) {
   const [entries, setEntries] = useState(initialEntries)
   const [input, setInput] = useState('')
@@ -171,6 +181,7 @@ export function AgentWorkspace({
   const [isPending, startTransition] = useTransition()
   const streamRef = useRef<EventSource | null>(null)
   const scrollRef = useRef<HTMLDivElement | null>(null)
+  const fileInputRef = useRef<HTMLInputElement | null>(null)
 
   useEffect(() => {
     return () => {
@@ -294,6 +305,24 @@ export function AgentWorkspace({
     })
   }
 
+  function handleImageUpload(event: React.ChangeEvent<HTMLInputElement>) {
+    const files = event.target.files
+    if (!files || files.length === 0) return
+    const newImages: UploadedImage[] = Array.from(files).map((file) => ({
+      id: `img-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      file,
+      url: URL.createObjectURL(file),
+    }))
+    onImagesChange([...images, ...newImages])
+    event.target.value = ''
+  }
+
+  function removeImage(id: string) {
+    const img = images.find((i) => i.id === id)
+    if (img) URL.revokeObjectURL(img.url)
+    onImagesChange(images.filter((i) => i.id !== id))
+  }
+
   const visibleEntries = entries.filter((entry) => entry.messageType !== 'approval_request')
   const timeline: TimelineItem[] = visibleEntries.map((entry) => ({
     kind: 'message',
@@ -373,19 +402,61 @@ export function AgentWorkspace({
       </div>
 
       <div className="mt-5 border-t border-slate-200/80 pt-4 dark:border-slate-800">
-        <input
-          value={input}
-          disabled={isPending}
-          onChange={(event) => setInput(event.target.value)}
-          onKeyDown={(event) => {
-            if (event.key === 'Enter' && !event.shiftKey) {
-              event.preventDefault()
-              submitInstruction(input)
-            }
-          }}
-          placeholder="Give the agent a new instruction and press Enter"
-          className="h-14 w-full rounded-[22px] border border-slate-200 bg-white/90 px-5 text-sm text-slate-900 outline-none transition focus:border-blue-300 focus:ring-4 focus:ring-blue-100 dark:border-slate-700 dark:bg-slate-900/90 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-blue-700 dark:focus:ring-blue-950/60"
-        />
+        {images.length > 0 && (
+          <div className="mb-3 flex flex-wrap gap-2">
+            {images.map((img) => (
+              <div key={img.id} className="group relative h-16 w-16 overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700">
+                <img src={img.url} alt={img.file?.name ?? 'uploaded image'} className="h-full w-full object-cover" />
+                <button
+                  type="button"
+                  onClick={() => removeImage(img.id)}
+                  className="absolute inset-0 flex items-center justify-center bg-black/50 text-white opacity-0 transition group-hover:opacity-100"
+                >
+                  <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                    <path d="M18 6 6 18M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div className="flex items-center gap-2">
+          <input
+            value={input}
+            disabled={isPending}
+            onChange={(event) => setInput(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault()
+                submitInstruction(input)
+              }
+            }}
+            placeholder="Give the agent a new instruction and press Enter"
+            className="h-14 flex-1 rounded-[22px] border border-slate-200 bg-white/90 px-5 text-sm text-slate-900 outline-none transition focus:border-blue-300 focus:ring-4 focus:ring-blue-100 dark:border-slate-700 dark:bg-slate-900/90 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-blue-700 dark:focus:ring-blue-950/60"
+          />
+
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            multiple
+            className="hidden"
+            onChange={handleImageUpload}
+          />
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={isPending}
+            className="flex h-14 w-14 shrink-0 items-center justify-center rounded-[22px] border border-slate-200 bg-white/90 text-slate-500 transition hover:border-blue-300 hover:text-blue-600 dark:border-slate-700 dark:bg-slate-900/90 dark:text-slate-400 dark:hover:border-blue-700 dark:hover:text-blue-400"
+          >
+            <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24">
+              <rect x="3" y="3" width="18" height="18" rx="3" />
+              <circle cx="8.5" cy="8.5" r="1.5" />
+              <path d="m21 15-5-5L5 21" />
+            </svg>
+          </button>
+        </div>
 
         {runError ? <div className="mt-3 text-xs text-red-600 dark:text-red-400">{runError}</div> : null}
       </div>

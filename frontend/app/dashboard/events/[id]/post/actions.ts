@@ -184,6 +184,73 @@ export async function getLatestAgentRunAction(eventId: string) {
   } satisfies AgentRun
 }
 
+export type MediaEntry = {
+  id: string
+  event_id: string
+  storage_path: string
+  url: string
+  created_at: string
+}
+
+export async function uploadMediaAction(eventId: string, formData: FormData) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/login')
+
+  const file = formData.get('file') as File | null
+  if (!file) throw new Error('No file provided')
+
+  const ext = file.name.split('.').pop() ?? 'jpg'
+  const storagePath = `${eventId}/${crypto.randomUUID()}.${ext}`
+
+  const arrayBuffer = await file.arrayBuffer()
+  const { error: uploadError } = await supabase.storage
+    .from('event-media')
+    .upload(storagePath, arrayBuffer, {
+      contentType: file.type,
+      upsert: false,
+    })
+
+  if (uploadError) throw new Error(uploadError.message)
+
+  const { data: record, error: insertError } = await supabase
+    .from('media')
+    .insert({
+      event_id: eventId,
+      uploaded_by: user.id,
+      media_type: 'image',
+      storage_path: storagePath,
+    })
+    .select('id, event_id, storage_path, created_at')
+    .single()
+
+  if (insertError) throw new Error(insertError.message)
+
+  const { data: signedUrlData } = await supabase.storage
+    .from('event-media')
+    .createSignedUrl(storagePath, 60 * 60 * 24 * 7) // 7 days
+
+  return { ...record, url: signedUrlData?.signedUrl ?? '' } as MediaEntry
+}
+
+export async function deleteMediaAction(mediaId: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/login')
+
+  const { data: record, error: fetchError } = await supabase
+    .from('media')
+    .select('id, storage_path')
+    .eq('id', mediaId)
+    .eq('uploaded_by', user.id)
+    .single()
+
+  if (fetchError || !record) throw new Error('Media not found')
+
+  await supabase.storage.from('event-media').remove([record.storage_path])
+  await supabase.from('media').delete().eq('id', record.id)
+}
+
 export async function publishPostAction(eventId: string) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()

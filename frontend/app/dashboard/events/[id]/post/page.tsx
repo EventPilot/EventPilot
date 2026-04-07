@@ -2,10 +2,9 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { AppShell } from '@/components/shell/app-shell'
 import { EventDetailTabs } from '@/components/domain/event-detail-tabs'
-import { AgentWorkspace } from '@/components/domain/agent-workspace'
-import { XPostCard } from '@/components/domain/x-post-card'
+import { EditorLayout } from '@/components/domain/editor-layout'
 import { Button } from '@/components/ui/button'
-import { publishPostAction, type AgentRun, type ChatMessageEntry } from './actions'
+import { publishPostAction, type AgentRun, type ChatMessageEntry, type MediaEntry } from './actions'
 
 type AgentTaskRow = {
   id: string
@@ -118,6 +117,23 @@ export default async function EventDetailPostChatPage({ params }: { params: Prom
     .eq('event_id', id)
     .maybeSingle()
 
+  // Load saved media for this event
+  const { data: mediaRows } = await supabase
+    .from('media')
+    .select('id, event_id, storage_path, created_at')
+    .eq('event_id', id)
+    .order('created_at', { ascending: true })
+
+  const signedUrls = await Promise.all(
+    (mediaRows ?? []).map((row) =>
+      supabase.storage.from('event-media').createSignedUrl(row.storage_path, 60 * 60 * 24 * 7)
+    )
+  )
+  const initialMedia: MediaEntry[] = (mediaRows ?? []).map((row, i) => ({
+    ...row,
+    url: signedUrls[i].data?.signedUrl ?? '',
+  }))
+
   const publishAction = publishPostAction.bind(null, id)
   const canPublish = Boolean(post?.content) && post?.status !== 'published'
 
@@ -136,17 +152,13 @@ export default async function EventDetailPostChatPage({ params }: { params: Prom
           }
         />
 
-        <div className="grid flex-1 min-h-0 gap-6 xl:grid-cols-2">
-          <div className="min-h-0">
-            <AgentWorkspace eventId={id} initialEntries={initialEntries} initialRun={initialRun} />
-          </div>
-
-          <div className="min-h-0">
-            <div className="h-full min-h-0 overflow-hidden">
-              <XPostCard content={post?.content ?? ''} />
-            </div>
-          </div>
-        </div>
+        <EditorLayout
+          eventId={id}
+          initialEntries={initialEntries}
+          initialRun={initialRun}
+          postContent={post?.content ?? ''}
+          initialMedia={initialMedia}
+        />
       </div>
     </AppShell>
   )
