@@ -54,6 +54,14 @@ export async function markEventFinishedAction(eventId: string) {
 
   if (error) throw new Error(error.message);
 
+  const apiUrl = process.env.EVENTPILOT_API_BASE_URL ?? process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080";
+  const res = await fetch(`${apiUrl}/api/events/${eventId}/chat/request-inputs`, {
+    method: "POST",
+  });
+  if (!res.ok) {
+    console.error(`[markEventFinishedAction] request-inputs failed: ${res.status} ${await res.text()}`);
+  }
+
   redirect(`/dashboard/events/${eventId}`);
 }
 
