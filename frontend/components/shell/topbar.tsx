@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
+import { ThemeToggle } from '@/components/ui/theme-toggle'
 
 export function Topbar({
   title,
@@ -60,6 +61,8 @@ export function Topbar({
               <Button>+ Create event</Button>
             </Link>
           ) : null}
+
+          <ThemeToggle />
 
           <div className="relative" ref={menuRef}>
             <button

@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { ThemeToggle } from '@/components/ui/theme-toggle'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -53,6 +54,9 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center p-6">
+      <div className="fixed top-4 right-4">
+        <ThemeToggle />
+      </div>
       <Card className="w-full max-w-md p-8">
         <div className="text-2xl font-semibold">Sign in</div>
         <div className="text-sm text-gray-500 mt-2">
@@ -68,7 +72,7 @@ export default function LoginPage() {
           <div>
             <div className="text-xs text-gray-500">Email</div>
             <input
-              className="mt-2 h-11 w-full rounded-xl border border-gray-200 bg-gray-50 px-4 text-sm outline-none"
+              className="mt-2 h-11 w-full rounded-xl border border-gray-200 bg-gray-50 px-4 text-sm outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-500"
               type="email"
               required
               value={email}
@@ -80,7 +84,7 @@ export default function LoginPage() {
           <div>
             <div className="text-xs text-gray-500">Password</div>
             <input
-              className="mt-2 h-11 w-full rounded-xl border border-gray-200 bg-gray-50 px-4 text-sm outline-none"
+              className="mt-2 h-11 w-full rounded-xl border border-gray-200 bg-gray-50 px-4 text-sm outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-500"
               type="password"
               required
               value={password}

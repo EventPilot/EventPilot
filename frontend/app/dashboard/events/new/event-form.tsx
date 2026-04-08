@@ -6,8 +6,13 @@ import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { createEvent } from './actions'
 
-// ─── Field ────────────────────────────────────────────────────────────────────
+type CustomRole = {
+  id: string
+  name: string
+  emails: string[]
+}
 
+// ─── Field ────────────────────────────────────────────────────────────────────
 function Field({
   label,
   placeholder,
@@ -127,17 +132,33 @@ export function EventForm({ ownerEmail }: { ownerEmail: string }) {
   const [photographerEmail, setPhotographerEmail] = useState('')
   const [includeEngineer, setIncludeEngineer] = useState(false)
   const [engineerEmails, setEngineerEmails] = useState<string[]>([''])
-  const [tone, setTone] = useState('Professional')  // Tone state
-  const [error, setError] = useState<string | null>(null) // error message
+  const [customRoles, setCustomRoles] = useState<CustomRole[]>([])
+  const [tone, setTone] = useState('Professional')
+  const [error, setError] = useState<string | null>(null)
+
   // Engineer helpers
-  function addEngineer() {
-    setEngineerEmails((prev) => [...prev, ''])
+  function addEngineer() { setEngineerEmails((prev) => [...prev, '']) }
+  function removeEngineer(i: number) { setEngineerEmails((prev) => prev.filter((_, idx) => idx !== i)) }
+  function updateEngineer(i: number, value: string) { setEngineerEmails((prev) => prev.map((v, idx) => idx === i ? value : v)) }
+
+  // Custom role helpers
+  function addCustomRole() {
+    setCustomRoles((prev) => [...prev, { id: crypto.randomUUID(), name: '', emails: [''] }])
   }
-  function removeEngineer(i: number) {
-    setEngineerEmails((prev) => prev.filter((_, idx) => idx !== i))
+  function removeCustomRole(id: string) {
+    setCustomRoles((prev) => prev.filter((r) => r.id !== id))
   }
-  function updateEngineer(i: number, value: string) {
-    setEngineerEmails((prev) => prev.map((v, idx) => (idx === i ? value : v)))
+  function updateCustomRoleName(id: string, name: string) {
+    setCustomRoles((prev) => prev.map((r) => r.id === id ? { ...r, name } : r))
+  }
+  function addCustomRoleEmail(id: string) {
+    setCustomRoles((prev) => prev.map((r) => r.id === id ? { ...r, emails: [...r.emails, ''] } : r))
+  }
+  function removeCustomRoleEmail(id: string, i: number) {
+    setCustomRoles((prev) => prev.map((r) => r.id === id ? { ...r, emails: r.emails.filter((_, idx) => idx !== i) } : r))
+  }
+  function updateCustomRoleEmail(id: string, i: number, value: string) {
+    setCustomRoles((prev) => prev.map((r) => r.id === id ? { ...r, emails: r.emails.map((e, idx) => idx === i ? value : e) } : r))
   }
 
   function handleSubmit(formData: FormData) {
@@ -145,8 +166,9 @@ export function EventForm({ ownerEmail }: { ownerEmail: string }) {
     const allEmails = [
       includePhotographer ? photographerEmail.trim() : null,
       ...(includeEngineer ? engineerEmails.map((e) => e.trim()) : []),
+      ...customRoles.flatMap((r) => r.emails.map((e) => e.trim())),
     ].filter(Boolean) as string[]
- 
+
     if (ownerEmail && allEmails.includes(ownerEmail)) {
       setError('The event owner cannot be assigned an additional role')
       return
@@ -162,10 +184,11 @@ export function EventForm({ ownerEmail }: { ownerEmail: string }) {
       roles.push({ email: photographerEmail.trim(), role: 'Photographer' })
     }
     if (includeEngineer) {
-      engineerEmails
-        .map((e) => e.trim())
-        .filter(Boolean)
-        .forEach((email) => roles.push({ email, role: 'Engineer' }))
+      engineerEmails.map((e) => e.trim()).filter(Boolean).forEach((email) => roles.push({ email, role: 'Engineer' }))
+    }
+    for (const cr of customRoles) {
+      const roleName = cr.name.trim() || 'Custom'
+      cr.emails.map((e) => e.trim()).filter(Boolean).forEach((email) => roles.push({ email, role: roleName }))
     }
 
     formData.set('roles', JSON.stringify(roles))
@@ -179,6 +202,7 @@ export function EventForm({ ownerEmail }: { ownerEmail: string }) {
     true, // owner always
     includePhotographer && !!photographerEmail.trim(),
     includeEngineer && engineerEmails.some((e) => e.trim()),
+    ...customRoles.map((r) => r.emails.some((e) => e.trim())),
   ].filter(Boolean).length
 
   return (
@@ -273,6 +297,63 @@ export function EventForm({ ownerEmail }: { ownerEmail: string }) {
                       </button>
                     </div>
                   )}
+                  {/* Custom roles */}
+                  {customRoles.map((cr) => (
+                    <div key={cr.id} className="rounded-xl border border-gray-200 bg-gray-50 p-3 dark:border-slate-700 dark:bg-slate-900">
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          placeholder="Role name (e.g. Engineer, MC, Videographer)"
+                          value={cr.name}
+                          onChange={(e) => updateCustomRoleName(cr.id, e.target.value)}
+                          className="h-9 flex-1 rounded-lg border border-gray-200 bg-white px-3 text-sm outline-none dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeCustomRole(cr.id)}
+                          className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:text-slate-500 dark:hover:bg-slate-800 dark:hover:text-slate-300"
+                          aria-label="Remove role"
+                        >
+                          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                            <path d="M1 1L13 13M13 1L1 13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                          </svg>
+                        </button>
+                      </div>
+                      <div className="mt-2 space-y-2 pl-1">
+                        {cr.emails.map((email, i) => (
+                          <EmailInput
+                            key={i}
+                            placeholder={`${cr.name || 'member'}${cr.emails.length > 1 ? ` ${i + 1}` : ''}@example.com`}
+                            value={email}
+                            onChange={(v) => updateCustomRoleEmail(cr.id, i, v)}
+                            onRemove={() => removeCustomRoleEmail(cr.id, i)}
+                            showRemove={cr.emails.length > 1}
+                          />
+                        ))}
+                        <button
+                          type="button"
+                          onClick={() => addCustomRoleEmail(cr.id)}
+                          className="flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs text-indigo-600 hover:bg-indigo-50 dark:text-blue-300 dark:hover:bg-blue-950/50"
+                        >
+                          <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                            <path d="M6 1V11M1 6H11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                          </svg>
+                          Add person
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                  {/* Add custom role button */}
+                  <button
+                    type="button"
+                    onClick={addCustomRole}
+                    className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-gray-300 py-2 text-xs text-gray-500 hover:border-indigo-300 hover:text-indigo-600 dark:border-slate-600 dark:text-slate-400 dark:hover:border-blue-600 dark:hover:text-blue-300"
+                  >
+                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                      <path d="M6 1V11M1 6H11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                    </svg>
+                    Add role
+                  </button>
                 </div>
               </div>
               {/* Tone */}

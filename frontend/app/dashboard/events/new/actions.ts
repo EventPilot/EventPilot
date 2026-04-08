@@ -6,7 +6,7 @@ import { randomUUID } from "crypto";
 
 type RoleAssignment = {
   email: string;
-  role: "Photographer" | "Engineer";
+  role: string;
 };
 
 export async function createEvent(formData: FormData) {
