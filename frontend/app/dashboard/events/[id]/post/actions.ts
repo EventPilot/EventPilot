@@ -194,61 +194,55 @@ export type MediaEntry = {
 
 export async function uploadMediaAction(eventId: string, formData: FormData) {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
+  const {
+    data: { session },
+  } = await supabase.auth.getSession()
+  if (!session?.access_token) {
+    redirect('/login')
+  }
 
   const file = formData.get('file') as File | null
   if (!file) throw new Error('No file provided')
 
-  const ext = file.name.split('.').pop() ?? 'jpg'
-  const storagePath = `${eventId}/${crypto.randomUUID()}.${ext}`
+  const backendForm = new FormData()
+  backendForm.append('file', file, file.name)
 
-  const arrayBuffer = await file.arrayBuffer()
-  const { error: uploadError } = await supabase.storage
-    .from('event-media')
-    .upload(storagePath, arrayBuffer, {
-      contentType: file.type,
-      upsert: false,
-    })
+  const response = await fetch(`${apiBaseUrl()}/api/events/${eventId}/media`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${session.access_token}`,
+    },
+    body: backendForm,
+    cache: 'no-store',
+  })
 
-  if (uploadError) throw new Error(uploadError.message)
+  if (!response.ok) {
+    throw new Error(await response.text())
+  }
 
-  const { data: record, error: insertError } = await supabase
-    .from('media')
-    .insert({
-      event_id: eventId,
-      uploaded_by: user.id,
-      media_type: 'image',
-      storage_path: storagePath,
-    })
-    .select('id, event_id, storage_path, created_at')
-    .single()
-
-  if (insertError) throw new Error(insertError.message)
-
-  const { data: signedUrlData } = await supabase.storage
-    .from('event-media')
-    .createSignedUrl(storagePath, 60 * 60 * 24 * 7) // 7 days
-
-  return { ...record, url: signedUrlData?.signedUrl ?? '' } as MediaEntry
+  return (await response.json()) as MediaEntry
 }
 
 export async function deleteMediaAction(mediaId: string) {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
+  const {
+    data: { session },
+  } = await supabase.auth.getSession()
+  if (!session?.access_token) {
+    redirect('/login')
+  }
 
-  const { data: record, error: fetchError } = await supabase
-    .from('media')
-    .select('id, storage_path')
-    .eq('id', mediaId)
-    .eq('uploaded_by', user.id)
-    .single()
+  const response = await fetch(`${apiBaseUrl()}/api/media/${mediaId}`, {
+    method: 'DELETE',
+    headers: {
+      Authorization: `Bearer ${session.access_token}`,
+    },
+    cache: 'no-store',
+  })
 
-  if (fetchError || !record) throw new Error('Media not found')
-
-  await supabase.storage.from('event-media').remove([record.storage_path])
-  await supabase.from('media').delete().eq('id', record.id)
+  if (!response.ok) {
+    throw new Error(await response.text())
+  }
 }
 
 export async function publishPostAction(eventId: string) {
