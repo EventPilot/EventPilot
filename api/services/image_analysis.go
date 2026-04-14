@@ -18,12 +18,7 @@ import (
 // by the lightweight Haiku vision model. It is stored alongside the media
 // record and surfaced to the planner/chat agent as additional context.
 type ImageAnalysis struct {
-	Caption     string   `json:"caption"`
-	Description string   `json:"description"`
-	Subjects    []string `json:"subjects,omitempty"`
-	Scene       string   `json:"scene,omitempty"`
-	Mood        string   `json:"mood,omitempty"`
-	Tags        []string `json:"tags,omitempty"`
+	Description string `json:"description"`
 }
 
 // supported content types for Claude vision
@@ -63,12 +58,7 @@ func AnalyzeImage(ctx context.Context, data []byte, contentType, eventTitle, eve
 
 	userPrompt := fmt.Sprintf(`Analyze this image uploaded for an event and return STRICT JSON matching this schema:
 {
-  "caption": "one-sentence caption suitable for a social post",
-  "description": "2-3 sentence objective description of what is in the image",
-  "subjects": ["main people/objects visible"],
-  "scene": "setting / location type (e.g. outdoor stage, classroom, reception hall)",
-  "mood": "overall mood / tone (e.g. celebratory, focused, candid)",
-  "tags": ["short","lowercase","keywords"]
+  "description": "2-3 sentence objective description of what is in the image, including setting, subjects, and mood"
 }
 
 Event title: %s
@@ -76,7 +66,6 @@ Event description: %s
 
 Rules:
 - Output ONLY the JSON object. No markdown, no preamble, no code fences.
-- Keep fields concise. Omit any field you cannot infer from the image.
 - Do not invent identities of specific people. Describe them generically.`, eventTitle, eventDescription)
 
 	msg, err := client.Messages.New(ctx, anthropic.MessageNewParams{

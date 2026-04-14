@@ -161,6 +161,7 @@ func (h *MediaHandler) UploadMedia(w http.ResponseWriter, r *http.Request) {
 
 type mediaRecord struct {
 	ID          string `json:"id"`
+	EventID     string `json:"event_id"`
 	UploadedBy  string `json:"uploaded_by"`
 	StoragePath string `json:"storage_path"`
 }
@@ -180,7 +181,7 @@ func (h *MediaHandler) DeleteMedia(w http.ResponseWriter, r *http.Request) {
 
 	var records []mediaRecord
 	_, err = h.SupabaseClient.From("media").
-		Select("id, uploaded_by, storage_path", "", false).
+		Select("id, event_id, uploaded_by, storage_path", "", false).
 		Eq("id", mediaID).
 		ExecuteTo(&records)
 	if err != nil {
@@ -209,6 +210,11 @@ func (h *MediaHandler) DeleteMedia(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Best-effort: remove the analysis entry for this media from the event context.
+	if err := removeMediaAnalysisFromEventContext(h.SupabaseClient, record.EventID, mediaID); err != nil {
+		log.Printf("[DeleteMedia] failed to remove media analysis from event context (event=%s media=%s): %v", record.EventID, mediaID, err)
+	}
+
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -228,6 +234,50 @@ func lookupEventSummary(client *supabase.Client, eventID string) (string, string
 	return events[0].Title, events[0].Description
 }
 
+// removeMediaAnalysisFromEventContext strips the entry for the given mediaID
+// from event.context.media_analyses. It is called when a media record is
+// deleted so the agent no longer sees context for images that no longer exist.
+func removeMediaAnalysisFromEventContext(client *supabase.Client, eventID, mediaID string) error {
+	var events []models.Event
+	_, err := client.From("event").
+		Select("id, context", "", false).
+		Eq("id", eventID).
+		ExecuteTo(&events)
+	if err != nil {
+		return err
+	}
+	if len(events) == 0 {
+		return nil
+	}
+
+	existing := events[0].Context
+	if existing == nil {
+		return nil
+	}
+	raw, ok := existing["media_analyses"]
+	if !ok {
+		return nil
+	}
+	arr, ok := raw.([]any)
+	if !ok {
+		return nil
+	}
+
+	filtered := make([]any, 0, len(arr))
+	for _, item := range arr {
+		if m, ok := item.(map[string]any); ok {
+			if m["media_id"] == mediaID {
+				continue
+			}
+		}
+		filtered = append(filtered, item)
+	}
+
+	return services.UpdateEventContext(client, eventID, map[string]any{
+		"media_analyses": filtered,
+	})
+}
+
 // appendMediaAnalysisToEventContext pushes a compact analysis summary onto
 // event.context.media_analyses so the planner agent sees what has been
 // uploaded without having to query the media table directly. We keep the
@@ -239,23 +289,8 @@ func appendMediaAnalysisToEventContext(client *supabase.Client, eventID, mediaID
 		"media_id": mediaID,
 		"filename": filename,
 	}
-	if analysis.Caption != "" {
-		entry["caption"] = analysis.Caption
-	}
 	if analysis.Description != "" {
 		entry["description"] = analysis.Description
-	}
-	if len(analysis.Subjects) > 0 {
-		entry["subjects"] = analysis.Subjects
-	}
-	if analysis.Scene != "" {
-		entry["scene"] = analysis.Scene
-	}
-	if analysis.Mood != "" {
-		entry["mood"] = analysis.Mood
-	}
-	if len(analysis.Tags) > 0 {
-		entry["tags"] = analysis.Tags
 	}
 
 	// Load the current context, append, and write back via the shared helper.

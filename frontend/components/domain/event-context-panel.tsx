@@ -80,7 +80,7 @@ function renderValue(value: ContextValue, keyPrefix: string): React.ReactNode {
 }
 
 export function EventContextPanel({ context, mediaUrls = [] }: { context?: Record<string, ContextValue> | null; mediaUrls?: string[] }) {
-  const entries = context ? Object.entries(context) : []
+  const entries = context ? Object.entries(context).filter(([key]) => key !== 'media_analyses') : []
 
   return (
     <div className="grid gap-6 xl:grid-cols-2">
