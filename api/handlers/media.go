@@ -6,6 +6,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -99,13 +100,9 @@ func (h *MediaHandler) UploadMedia(w http.ResponseWriter, r *http.Request) {
 		log.Printf("[UploadMedia] image analysis failed for event=%s: %v", eventID, analysisErr)
 	}
 
-	metadata := map[string]any{
-		"filename":     header.Filename,
-		"size":         header.Size,
-		"content_type": contentType,
-	}
-	if analysis != nil {
-		metadata["analysis"] = analysis
+	metadata := map[string]any{}
+	if analysis != nil && analysis.Description != "" {
+		metadata["description"] = analysis.Description
 	}
 
 	mediaID := uuid.NewString()
@@ -134,7 +131,16 @@ func (h *MediaHandler) UploadMedia(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	signed, err := h.SupabaseClient.Storage.CreateSignedUrl(mediaBucket, storagePath, mediaSignedTTL)
+	// storage-go@v0.7.0 mutates the shared transport Content-Type header when
+	// UploadFile is called with FileOptions.ContentType, breaking subsequent
+	// JSON requests on the same client. Use a fresh storage client here so
+	// CreateSignedUrl sends the correct Content-Type: application/json.
+	freshStorage := storage_go.NewClient(
+		os.Getenv("SUPABASE_URL")+"/storage/v1",
+		os.Getenv("SUPABASE_API_KEY"),
+		nil,
+	)
+	signed, err := freshStorage.CreateSignedUrl(mediaBucket, storagePath, mediaSignedTTL)
 	if err != nil {
 		http.Error(w, "failed to create signed url: "+err.Error(), http.StatusInternalServerError)
 		return
