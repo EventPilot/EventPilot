@@ -4,10 +4,12 @@ export function XPostCard({
   accountName = 'Event Pilot',
   handle = '@eventpilot.app',
   content,
+  imageUrls = [],
 }: {
   accountName?: string
   handle?: string
   content: string
+  imageUrls?: string[]
 }) {
   const lines = content.split('\n').filter(Boolean)
 
@@ -39,9 +41,13 @@ export function XPostCard({
               {Array.from({ length: 3 }).map((_, i) => (
                 <div
                   key={i}
-                  className="flex h-32 items-center justify-center rounded-[18px] border border-sky-200 bg-white text-xs font-medium text-slate-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-400"
+                  className="flex h-32 items-center justify-center overflow-hidden rounded-[18px] border border-sky-200 bg-white dark:border-slate-700 dark:bg-slate-950"
                 >
-                  Image slot
+                  {imageUrls[i] ? (
+                    <img src={imageUrls[i]} alt={`Upload ${i + 1}`} className="h-full w-full object-cover" />
+                  ) : (
+                    <span className="text-xs font-medium text-slate-500 dark:text-slate-400">Image slot</span>
+                  )}
                 </div>
               ))}
             </div>

@@ -43,6 +43,7 @@ func main() {
 
 	chatHandler := &handlers.ChatHandler{SupabaseClient: supabaseClient, RunManager: services.NewRunManager(supabaseClient)}
 	cronHandler := &handlers.CronHandler{SupabaseClient: supabaseClient}
+	mediaHandler := &handlers.MediaHandler{SupabaseClient: supabaseClient}
 
 	startCronWorker(cronHandler, time.Hour)
 
@@ -53,7 +54,8 @@ func main() {
 	mux.HandleFunc("POST /api/agent-runs/{runId}/approve", chatHandler.ApproveRun)
 	mux.HandleFunc("GET /api/agent-runs/{runId}/stream", chatHandler.StreamRun)
 	mux.HandleFunc("POST /api/events/{id}/chat/request-inputs", chatHandler.RequestInputs)
-	mux.HandleFunc("POST /api/events/{id}/media", handlers.UploadMedia)
+	mux.HandleFunc("POST /api/events/{id}/media", mediaHandler.UploadMedia)
+	mux.HandleFunc("DELETE /api/media/{mediaId}", mediaHandler.DeleteMedia)
 	mux.HandleFunc("POST /api/events/{id}/generate-post", handlers.GeneratePost)
 	mux.HandleFunc("GET /api/events/{id}/post", handlers.GetPost)
 	mux.HandleFunc("POST /api/events/{id}/post/publish", handlers.PublishPost)
