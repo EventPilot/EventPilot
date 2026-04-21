@@ -10,7 +10,12 @@ export default async function NewEventPage() {
   const { data: profile } = await supabase.from('user').select('name').eq('id', user.id).single()
 
   return (
-    <AppShell title="Create event" userName={profile?.name ?? user.email?.split('@')[0] ?? 'Account'} userSubline={user.email ?? ''}>
+    <AppShell
+      title="Create event"
+      userName={profile?.name ?? user.email?.split('@')[0] ?? 'Account'}
+      userSubline={user.email ?? ''}
+      showCreateAction={false}
+    >
       <EventForm ownerEmail={user?.email ?? ''} />
     </AppShell>
   )

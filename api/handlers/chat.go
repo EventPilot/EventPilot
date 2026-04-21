@@ -9,6 +9,7 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/supabase-community/supabase-go"
@@ -86,8 +87,18 @@ type createChatMessageRequest struct {
 }
 
 type createChatMessageResponse struct {
-	ChatID string             `json:"chat_id"`
-	Run    *services.AgentRun `json:"run"`
+	ChatID  string                    `json:"chat_id"`
+	Run     *services.AgentRun        `json:"run"`
+	Message createChatMessageResponseMessage `json:"message"`
+	Queued  bool                      `json:"queued"`
+}
+
+type createChatMessageResponseMessage struct {
+	ID        string                 `json:"id"`
+	Message   string                 `json:"message"`
+	MessageType string               `json:"message_type"`
+	CreatedAt string                 `json:"created_at"`
+	Metadata  map[string]any         `json:"metadata"`
 }
 
 func (h *ChatHandler) RequestInputs(w http.ResponseWriter, r *http.Request) {
@@ -143,18 +154,29 @@ func (h *ChatHandler) CreateChatMessage(w http.ResponseWriter, r *http.Request) 
 	}
 
 	senderID := user.ID.String()
+	messageID := uuid.NewString()
+	createdAt := strings.TrimSpace(timeNowUTC())
+	messageMetadata := map[string]any{}
 	_, _, err = h.SupabaseClient.From("chat_message").Insert(map[string]any{
-		"id":           uuid.NewString(),
+		"id":           messageID,
 		"chat_id":      chatID,
 		"sender_type":  "user",
 		"sender_id":    senderID,
 		"message":      req.Message,
 		"message_type": "message",
-		"metadata":     map[string]any{},
+		"metadata":     messageMetadata,
 	}, false, "", "", "").Execute()
 	if err != nil {
 		http.Error(w, "failed to save message", http.StatusInternalServerError)
 		return
+	}
+
+	responseMessage := createChatMessageResponseMessage{
+		ID:          messageID,
+		Message:     req.Message,
+		MessageType: "message",
+		CreatedAt:   createdAt,
+		Metadata:    messageMetadata,
 	}
 
 	handledBlockedRun, err := h.RunManager.HandleIncomingMessage(r.Context(), chatID, req.Message)
@@ -167,18 +189,33 @@ func (h *ChatHandler) CreateChatMessage(w http.ResponseWriter, r *http.Request) 
 		http.Error(w, "failed to load active run", http.StatusInternalServerError)
 		return
 	} else if ok {
+		if !handledBlockedRun {
+			if err := h.RunManager.QueueRequesterMessage(r.Context(), messageID); err != nil {
+				http.Error(w, "failed to queue message", http.StatusInternalServerError)
+				return
+			}
+			responseMessage.Metadata = map[string]any{
+				"workflow_state":        "queued",
+				"queued_for_active_run": true,
+			}
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(createChatMessageResponse{
-			ChatID: chatID,
-			Run:    active,
+			ChatID:  chatID,
+			Run:     active,
+			Message: responseMessage,
+			Queued:  !handledBlockedRun,
 		})
 		return
 	}
 	if handledBlockedRun {
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(createChatMessageResponse{
-			ChatID: chatID,
-			Run:    nil,
+			ChatID:  chatID,
+			Run:     nil,
+			Message: responseMessage,
+			Queued:  false,
 		})
 		return
 	}
@@ -214,35 +251,20 @@ func (h *ChatHandler) CreateChatMessage(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	var lines []string
-	if run.PlanSummary != "" {
-		lines = append(lines, run.PlanSummary)
-	}
-	for _, task := range run.Tasks {
-		lines = append(lines, strings.TrimSpace(task.Title))
-	}
-	approvalText := "Plan ready for approval."
-	if len(lines) > 0 {
-		approvalText = "Plan ready for approval:\n- " + strings.Join(lines, "\n- ")
-	}
-	_, _, _ = h.SupabaseClient.From("chat_message").Insert(map[string]any{
-		"id":           uuid.NewString(),
-		"chat_id":      chatID,
-		"sender_type":  "agent",
-		"message":      approvalText,
-		"agent_run_id": run.ID,
-		"message_type": "approval_request",
-		"metadata": map[string]any{
-			"task_count": len(run.Tasks),
-		},
-	}, false, "", "", "").Execute()
+	_ = h.RunManager.InsertApprovalRequestMessage(r.Context(), chatID, run)
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(createChatMessageResponse{
-		ChatID: chatID,
-		Run:    run,
+		ChatID:  chatID,
+		Run:     run,
+		Message: responseMessage,
+		Queued:  false,
 	})
+}
+
+func timeNowUTC() string {
+	return time.Now().UTC().Format(time.RFC3339Nano)
 }
 
 func (h *ChatHandler) ApproveRun(w http.ResponseWriter, r *http.Request) {

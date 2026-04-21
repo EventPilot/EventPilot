@@ -13,8 +13,8 @@ export default async function DraftsPage() {
     <AppShell title="Drafts" userName={profile?.name ?? user.email?.split('@')[0] ?? 'Account'} userSubline={user.email ?? ''}>
       <Card className="p-6">
         <div className="text-lg font-semibold">Drafts</div>
-        <div className="text-sm text-gray-500 mt-1">All generated drafts waiting for approval.</div>
-        <div className="mt-6 rounded-2xl border border-gray-200 bg-gray-50 p-6 text-sm text-gray-600">
+        <div className="mt-1 text-sm text-gray-500 dark:text-slate-400">All generated drafts waiting for approval.</div>
+        <div className="mt-6 rounded-2xl border border-gray-200 bg-gray-50 p-6 text-sm text-gray-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
           Placeholder screen.
         </div>
       </Card>

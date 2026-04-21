@@ -26,13 +26,13 @@ export function EventCard({
       <div className="flex items-start justify-between gap-4">
         <div>
           <div className="text-sm font-medium">{title}</div>
-          <div className="text-xs text-gray-500 mt-1">
+          <div className="mt-1 text-xs text-gray-500 dark:text-slate-400">
             {location
               ? `${formatDateTime(eventDate)} • ${location}`
               : formatDateTime(eventDate)}
           </div>
           <div className="inline-flex mt-3 gap-2">
-            <span className="items-center rounded-full border border-gray-200 bg-gray-100 px-3 py-1 text-xs text-gray-600">
+            <span className="items-center rounded-full border border-gray-200 bg-gray-100 px-3 py-1 text-xs text-gray-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
               {role}
             </span>
             <StatusPill status={status} />

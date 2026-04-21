@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"os"
 	"sort"
 	"strings"
@@ -75,6 +76,15 @@ type RunEvent struct {
 	Run  *AgentRun `json:"run"`
 }
 
+type QueuedChatMessage struct {
+	ID        string                 `json:"id"`
+	ChatID    string                 `json:"chat_id"`
+	SenderID  string                 `json:"sender_id"`
+	Message   string                 `json:"message"`
+	Metadata  map[string]interface{} `json:"metadata"`
+	CreatedAt time.Time              `json:"created_at"`
+}
+
 type plannerResponse struct {
 	Summary string        `json:"summary"`
 	Tasks   []plannerTask `json:"tasks"`
@@ -86,6 +96,21 @@ type plannerTask struct {
 	TargetUserID     string `json:"target_user_id,omitempty"`
 	Instructions     string `json:"instructions,omitempty"`
 	CompletionSignal string `json:"completion_signal,omitempty"`
+}
+
+type agentTaskInsertRecord struct {
+	ID               string                 `json:"id"`
+	RunID            string                 `json:"run_id"`
+	Position         int                    `json:"position"`
+	Title            string                 `json:"title"`
+	Kind             string                 `json:"kind"`
+	Status           string                 `json:"status"`
+	TargetUserID     *string                `json:"target_user_id"`
+	TargetChatID     *string                `json:"target_chat_id"`
+	Instructions     string                 `json:"instructions"`
+	CompletionSignal string                 `json:"completion_signal"`
+	Result           string                 `json:"result"`
+	TaskPayload      map[string]interface{} `json:"task_payload"`
 }
 
 type EventMemberWithUser struct {
@@ -183,25 +208,21 @@ func (m *RunManager) FinalizeRunPlan(ctx context.Context, runID string, planSumm
 		tasks[i].RunID = runID
 	}
 	if len(tasks) > 0 {
-		records := make([]map[string]any, 0, len(tasks))
+		records := make([]agentTaskInsertRecord, 0, len(tasks))
 		for _, task := range tasks {
-			record := map[string]any{
-				"id":                task.ID,
-				"run_id":            runID,
-				"position":          task.Position,
-				"title":             task.Title,
-				"kind":              task.Kind,
-				"status":            task.Status,
-				"instructions":      task.Instructions,
-				"completion_signal": task.CompletionSignal,
-				"result":            task.Result,
-				"task_payload":      emptyJSON(task.TaskPayload),
-			}
-			if task.TargetUserID != nil && *task.TargetUserID != "" {
-				record["target_user_id"] = *task.TargetUserID
-			}
-			if task.TargetChatID != nil && *task.TargetChatID != "" {
-				record["target_chat_id"] = *task.TargetChatID
+			record := agentTaskInsertRecord{
+				ID:               task.ID,
+				RunID:            runID,
+				Position:         task.Position,
+				Title:            task.Title,
+				Kind:             task.Kind,
+				Status:           task.Status,
+				TargetUserID:     task.TargetUserID,
+				TargetChatID:     task.TargetChatID,
+				Instructions:     task.Instructions,
+				CompletionSignal: task.CompletionSignal,
+				Result:           task.Result,
+				TaskPayload:      emptyJSON(task.TaskPayload),
 			}
 			records = append(records, record)
 		}
@@ -373,6 +394,178 @@ func (m *RunManager) HandleIncomingMessage(ctx context.Context, chatID string, m
 	return handled, nil
 }
 
+func (m *RunManager) QueueRequesterMessage(ctx context.Context, messageID string) error {
+	return m.updateQueuedMessageMetadata(ctx, messageID, map[string]any{
+		"workflow_state":        "queued",
+		"queued_for_active_run": true,
+	})
+}
+
+func (m *RunManager) updateQueuedMessageMetadata(ctx context.Context, messageID string, fields map[string]any) error {
+	var rows []struct {
+		Metadata map[string]interface{} `json:"metadata"`
+	}
+	_, err := m.client.From("chat_message").
+		Select("metadata", "", false).
+		Eq("id", messageID).
+		ExecuteTo(&rows)
+	if err != nil {
+		return err
+	}
+	if len(rows) == 0 {
+		return errors.New("chat message not found")
+	}
+
+	metadata := cloneMap(rows[0].Metadata)
+	for key, value := range fields {
+		metadata[key] = value
+	}
+
+	_, _, err = m.client.From("chat_message").
+		Update(map[string]any{"metadata": emptyJSON(metadata)}, "", "").
+		Eq("id", messageID).
+		Execute()
+	return err
+}
+
+func (m *RunManager) PromoteNextQueuedMessage(ctx context.Context, chatID, eventID, requesterUserID string) (*AgentRun, bool, error) {
+	queued, ok, err := m.findNextQueuedRequesterMessage(ctx, chatID)
+	if err != nil || !ok {
+		return nil, ok, err
+	}
+
+	event, members, err := m.loadEventContextForPlanning(ctx, eventID)
+	if err != nil {
+		return nil, false, err
+	}
+	requester, err := m.loadRequester(ctx, requesterUserID)
+	if err != nil {
+		return nil, false, err
+	}
+
+	planningRun, err := m.CreatePlanningRun(ctx, chatID, eventID, requesterUserID, event.Context)
+	if err != nil {
+		return nil, false, err
+	}
+
+	planSummary, tasks, plannerPayload, err := BuildRunPlan(ctx, event, requester, members, queued.Message)
+	if err != nil {
+		return nil, false, err
+	}
+
+	run, err := m.FinalizeRunPlan(ctx, planningRun.ID, planSummary, tasks, plannerPayload)
+	if err != nil {
+		return nil, false, err
+	}
+
+	if err := m.updateQueuedMessageMetadata(ctx, queued.ID, map[string]any{
+		"workflow_state":        "consumed",
+		"queued_for_active_run": false,
+	}); err != nil {
+		return nil, false, err
+	}
+	if _, _, err := m.client.From("chat_message").
+		Update(map[string]any{"agent_run_id": run.ID}, "", "").
+		Eq("id", queued.ID).
+		Execute(); err != nil {
+		return nil, false, err
+	}
+
+	if err := m.InsertApprovalRequestMessage(ctx, chatID, run); err != nil {
+		return nil, false, err
+	}
+
+	return run, true, nil
+}
+
+func (m *RunManager) InsertApprovalRequestMessage(ctx context.Context, chatID string, run *AgentRun) error {
+	var lines []string
+	if run.PlanSummary != "" {
+		lines = append(lines, run.PlanSummary)
+	}
+	for _, task := range run.Tasks {
+		lines = append(lines, strings.TrimSpace(task.Title))
+	}
+	approvalText := "Plan ready for approval."
+	if len(lines) > 0 {
+		approvalText = "Plan ready for approval:\n- " + strings.Join(lines, "\n- ")
+	}
+
+	return m.insertChatMessage(chatID, "agent", nil, approvalText, "approval_request", run.ID, "", map[string]any{
+		"task_count": len(run.Tasks),
+	})
+}
+
+func (m *RunManager) findNextQueuedRequesterMessage(ctx context.Context, chatID string) (*QueuedChatMessage, bool, error) {
+	var rows []QueuedChatMessage
+	_, err := m.client.From("chat_message").
+		Select("id, chat_id, sender_id, message, metadata, created_at", "", false).
+		Eq("chat_id", chatID).
+		Eq("sender_type", "user").
+		Eq("message_type", "message").
+		ExecuteTo(&rows)
+	if err != nil {
+		return nil, false, err
+	}
+
+	queued := make([]QueuedChatMessage, 0, len(rows))
+	for _, row := range rows {
+		if workflowState(row.Metadata) == "queued" {
+			queued = append(queued, row)
+		}
+	}
+	if len(queued) == 0 {
+		return nil, false, nil
+	}
+
+	sort.Slice(queued, func(i, j int) bool {
+		return queued[i].CreatedAt.Before(queued[j].CreatedAt)
+	})
+	return &queued[0], true, nil
+}
+
+func (m *RunManager) loadEventContextForPlanning(ctx context.Context, eventID string) (models.Event, []EventMemberWithUser, error) {
+	var events []models.Event
+	_, err := m.client.From("event").
+		Select("id, title, description, event_date, location, status, context", "", false).
+		Eq("id", eventID).
+		ExecuteTo(&events)
+	if err != nil {
+		return models.Event{}, nil, err
+	}
+	if len(events) == 0 {
+		return models.Event{}, nil, errors.New("event not found")
+	}
+
+	var members []EventMemberWithUser
+	_, err = m.client.From("event_member").
+		Select("user_id, role, user(id, name)", "", false).
+		Eq("event_id", eventID).
+		ExecuteTo(&members)
+	if err != nil {
+		return models.Event{}, nil, err
+	}
+	return events[0], members, nil
+}
+
+func (m *RunManager) loadRequester(ctx context.Context, requesterUserID string) (models.User, error) {
+	var users []models.User
+	_, err := m.client.From("user").
+		Select("id, name, role", "", false).
+		Eq("id", requesterUserID).
+		ExecuteTo(&users)
+	if err != nil {
+		return models.User{}, err
+	}
+	if len(users) == 0 {
+		return models.User{ID: requesterUserID, Name: "Requester"}, nil
+	}
+	if strings.TrimSpace(users[0].Name) == "" {
+		users[0].Name = "Requester"
+	}
+	return users[0], nil
+}
+
 func (m *RunManager) executeRun(ctx context.Context, runID string) {
 	for {
 		run, err := m.GetRun(ctx, runID)
@@ -396,6 +589,7 @@ func (m *RunManager) executeRun(ctx context.Context, runID string) {
 			if err == nil {
 				m.publish(run.ID, "completed", updated)
 			}
+			_, _, _ = m.PromoteNextQueuedMessage(ctx, run.ChatID, run.EventID, run.RequestedByUserID)
 			return
 		}
 
@@ -637,6 +831,20 @@ func (m *RunManager) insertChatMessage(chatID string, senderType string, senderI
 	return err
 }
 
+func workflowState(metadata map[string]interface{}) string {
+	if metadata == nil {
+		return ""
+	}
+	value, ok := metadata["workflow_state"]
+	if !ok {
+		return ""
+	}
+	if state, ok := value.(string); ok {
+		return strings.TrimSpace(state)
+	}
+	return ""
+}
+
 func BuildRunPlan(ctx context.Context, event models.Event, requester models.User, members []EventMemberWithUser, message string) (string, []AgentTask, map[string]interface{}, error) {
 	resp, err := planTasks(ctx, event, requester, members, message)
 	if err != nil {
@@ -713,6 +921,7 @@ func normalizeTaskKind(kind string) string {
 func planTasks(ctx context.Context, event models.Event, requester models.User, members []EventMemberWithUser, message string) (*plannerResponse, error) {
 	apiKey := os.Getenv("ANTHROPIC_API_KEY")
 	if apiKey == "" {
+		log.Printf("[agent_runs.planTasks] using fallback plan: ANTHROPIC_API_KEY is not set for event=%s requester=%s", event.ID, requester.ID)
 		return fallbackPlan(members, message), nil
 	}
 
@@ -754,6 +963,8 @@ Return only valid JSON. Keep the plan short and executable.`,
 		},
 	})
 	if err != nil {
+		log.Printf("[agent_runs.planTasks] Claude planner failed for event=%s requester=%s: %v", event.ID, requester.ID, err)
+		log.Printf("[agent_runs.planTasks] using fallback plan after Claude error for event=%s requester=%s", event.ID, requester.ID)
 		return fallbackPlan(members, message), nil
 	}
 
@@ -763,15 +974,36 @@ Return only valid JSON. Keep the plan short and executable.`,
 			text.WriteString(block.Text)
 		}
 	}
+	raw := strings.TrimSpace(text.String())
+	normalized := extractJSONPayload(raw)
 
 	var resp plannerResponse
-	if err := json.Unmarshal([]byte(text.String()), &resp); err != nil {
+	if err := json.Unmarshal([]byte(normalized), &resp); err != nil {
+		log.Printf("[agent_runs.planTasks] failed to parse Claude planner response for event=%s requester=%s: %v; raw=%q", event.ID, requester.ID, err, raw)
+		log.Printf("[agent_runs.planTasks] using fallback plan after invalid Claude JSON for event=%s requester=%s", event.ID, requester.ID)
 		return fallbackPlan(members, message), nil
 	}
 	if strings.TrimSpace(resp.Summary) == "" {
+		log.Printf("[agent_runs.planTasks] Claude planner returned empty summary for event=%s requester=%s; using default summary", event.ID, requester.ID)
 		resp.Summary = "Review the request and work through the next event tasks."
 	}
+	log.Printf("[agent_runs.planTasks] Claude planner produced %d task(s) for event=%s requester=%s", len(resp.Tasks), event.ID, requester.ID)
 	return &resp, nil
+}
+
+func extractJSONPayload(raw string) string {
+	trimmed := strings.TrimSpace(raw)
+	if strings.HasPrefix(trimmed, "```") {
+		lines := strings.Split(trimmed, "\n")
+		if len(lines) >= 2 {
+			lines = lines[1:]
+		}
+		if len(lines) > 0 && strings.TrimSpace(lines[len(lines)-1]) == "```" {
+			lines = lines[:len(lines)-1]
+		}
+		trimmed = strings.TrimSpace(strings.Join(lines, "\n"))
+	}
+	return trimmed
 }
 
 func fallbackPlan(members []EventMemberWithUser, message string) *plannerResponse {

@@ -5,6 +5,12 @@
   color-scheme: light;
 }
 
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+  }
+}
+
 html,
 body {
   height: 100%;
@@ -13,4 +19,11 @@ body {
 body {
   background: #f7f8fa;
   color: #111827;
+}
+
+@media (prefers-color-scheme: dark) {
+  body {
+    background: #020617;
+    color: #e2e8f0;
+  }
 }

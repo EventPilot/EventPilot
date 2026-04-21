@@ -1,12 +1,8 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { AppShell } from "@/components/shell/app-shell";
 import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { EventCard } from "@/components/domain/event-card";
-import { TaskCard } from "@/components/domain/task-card";
-import { listUpcomingEvents } from "@/lib/data/upcoming-events";
 
 export default async function DashboardHomePage() {
   const supabase = await createClient();
@@ -19,89 +15,55 @@ export default async function DashboardHomePage() {
   }
 
   const { data: profile } = await supabase.from('user').select('name').eq('id', user.id).single()
-  const events = await listUpcomingEvents();
+  const { data: memberRows } = await supabase
+    .from("event_member")
+    .select(
+      `
+      role,
+      event (
+        id,
+        title,
+        description,
+        event_date,
+        created_at,
+        location,
+        status
+      )
+    `,
+    )
+    .eq("user_id", user.id);
+
+  const events =
+    memberRows
+      ?.map((row: any) => ({ ...row.event, role: row.role }))
+      .sort((a: any, b: any) => a.event_date.localeCompare(b.event_date)) ?? [];
 
   return (
-    <AppShell title="Home" userName={profile?.name ?? user.email?.split('@')[0] ?? 'Account'} userSubline={user.email ?? ''}>
-      <div className="grid grid-cols-12 gap-6">
-        <div className="col-span-8 space-y-6">
-          <Card className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-lg font-semibold">Upcoming Events</div>
-                <div className="text-sm text-gray-500 mt-1">
-                  All scheduled milestones and drafts.
-                </div>
-              </div>
-              <Link href="/dashboard/events/new">
-                <Button>+ Add event</Button>
-              </Link>
+    <AppShell title="Events" userName={profile?.name ?? user.email?.split('@')[0] ?? 'Account'} userSubline={user.email ?? ''}>
+      <Card className="p-6">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <div className="text-lg font-semibold">All events</div>
+            <div className="mt-1 text-sm text-gray-500 dark:text-slate-400">
+              {events.length} event{events.length !== 1 ? "s" : ""}
             </div>
-
-            <div className="mt-5 grid grid-cols-2 gap-4">
-              {events.map((e: any) => (
-                <EventCard
-                  key={e.id}
-                  title={e.title}
-                  eventDate={e.event_date}
-                  location={e.location}
-                  status={e.status}
-                  role={e.role}
-                  href={`/dashboard/events/${e.id}`}
-                />
-              ))}
-            </div>
-          </Card>
+          </div>
         </div>
 
-        <div className="col-span-4 space-y-6">
-          <Card className="p-6">
-            <div className="text-lg font-semibold">Action items</div>
-            <div className="text-sm text-gray-500 mt-1">
-              Things that block a post from being generated.
-            </div>
-
-            <div className="mt-5 space-y-4">
-              <TaskCard
-                title="Photographer upload pending"
-                meta="Customer Rocket Launch — Artemis Demo"
-              />
-              <TaskCard
-                title="Customer quote needed"
-                meta="Customer Rocket Launch — Artemis Demo"
-              />
-              <TaskCard
-                title="Review draft for Press Kit"
-                meta="Press Kit Review"
-              />
-            </div>
-          </Card>
-
-          <Card className="p-6">
-            <div className="text-lg font-semibold">Quick links</div>
-            <div className="mt-4 flex flex-col gap-3">
-              <Link
-                href="/dashboard/events/new"
-                className="text-sm text-blue-700 hover:underline"
-              >
-                Create a new event
-              </Link>
-              <Link
-                href="/dashboard/drafts"
-                className="text-sm text-blue-700 hover:underline"
-              >
-                Review drafts
-              </Link>
-              <Link
-                href="/dashboard/settings"
-                className="text-sm text-blue-700 hover:underline"
-              >
-                Workspace settings
-              </Link>
-            </div>
-          </Card>
+        <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {events.map((e: any) => (
+            <EventCard
+              key={e.id}
+              title={e.title}
+              eventDate={e.event_date}
+              location={e.location}
+              status={e.status}
+              role={e.role}
+              href={`/dashboard/events/${e.id}`}
+            />
+          ))}
         </div>
-      </div>
+      </Card>
     </AppShell>
   );
 }
