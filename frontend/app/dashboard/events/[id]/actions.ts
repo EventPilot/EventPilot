@@ -54,6 +54,24 @@ export async function markEventFinishedAction(eventId: string) {
 
   if (error) throw new Error(error.message);
 
+  const apiUrl =
+    process.env.EVENTPILOT_API_BASE_URL ??
+    process.env.NEXT_PUBLIC_API_BASE_URL ??
+    "http://localhost:8080";
+  try {
+    const res = await fetch(
+      `${apiUrl}/api/events/${eventId}/chat/request-inputs`,
+      { method: "POST" },
+    );
+    if (!res.ok) {
+      console.error(
+        `[markEventFinishedAction] request-inputs failed: ${res.status} ${await res.text()}`,
+      );
+    }
+  } catch (err) {
+    console.error("[markEventFinishedAction] Could not reach backend:", err);
+  }
+
   redirect(`/dashboard/events/${eventId}`);
 }
 
