@@ -60,6 +60,23 @@ function apiBaseUrl() {
   )
 }
 
+function inferImageMimeType(path: string): string {
+  const ext = path.split('.').pop()?.toLowerCase() ?? ''
+  switch (ext) {
+    case 'jpg':
+    case 'jpeg':
+      return 'image/jpeg'
+    case 'png':
+      return 'image/png'
+    case 'gif':
+      return 'image/gif'
+    case 'webp':
+      return 'image/webp'
+    default:
+      return 'application/octet-stream'
+  }
+}
+
 export async function sendChatMessageAction(eventId: string, message: string) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -250,23 +267,106 @@ export async function publishPostAction(eventId: string) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const {
-    data: { session },
-  } = await supabase.auth.getSession()
-  if (!session?.access_token) {
-    throw new Error('Missing auth session')
+  const handle = process.env.BSKY_HANDLE
+  const password = process.env.BSKY_PASSWORD
+  if (!handle || !password) {
+    throw new Error('BSKY_HANDLE and BSKY_PASSWORD must be set in the environment')
   }
 
-  const response = await fetch(`${apiBaseUrl()}/api/events/${eventId}/post/publish`, {
+  const { data: post, error: postError } = await supabase
+    .from('post')
+    .select('content')
+    .eq('event_id', eventId)
+    .maybeSingle()
+  if (postError) throw new Error(postError.message)
+  if (!post?.content) throw new Error('No draft post to publish — generate one first')
+
+  const sessionRes = await fetch('https://bsky.social/xrpc/com.atproto.server.createSession', {
     method: 'POST',
-    headers: {
-      Authorization: `Bearer ${session.access_token}`,
-    },
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ identifier: handle, password }),
     cache: 'no-store',
   })
+  if (!sessionRes.ok) {
+    throw new Error(`Bluesky auth failed (${sessionRes.status}): ${await sessionRes.text()}`)
+  }
+  const bskySession = (await sessionRes.json()) as { accessJwt: string; did: string; handle: string }
 
-  if (!response.ok) {
-    throw new Error(await response.text())
+  const { data: mediaRows, error: mediaError } = await supabase
+    .from('media')
+    .select('id, storage_path')
+    .eq('event_id', eventId)
+    .order('created_at', { ascending: true })
+    .limit(4)
+  if (mediaError) throw new Error(mediaError.message)
+
+  const images: Array<{ alt: string; image: unknown }> = []
+  for (const row of mediaRows ?? []) {
+    const { data: blob, error: dlError } = await supabase.storage
+      .from('event-media')
+      .download(row.storage_path)
+    if (dlError || !blob) {
+      throw new Error(`Failed to download media ${row.id}: ${dlError?.message ?? 'no data'}`)
+    }
+
+    const mimeType = blob.type || inferImageMimeType(row.storage_path)
+    const buffer = await blob.arrayBuffer()
+
+    const uploadRes = await fetch('https://bsky.social/xrpc/com.atproto.repo.uploadBlob', {
+      method: 'POST',
+      headers: {
+        'Content-Type': mimeType,
+        Authorization: `Bearer ${bskySession.accessJwt}`,
+      },
+      body: buffer,
+      cache: 'no-store',
+    })
+    if (!uploadRes.ok) {
+      throw new Error(`Bluesky uploadBlob failed (${uploadRes.status}): ${await uploadRes.text()}`)
+    }
+    const { blob: blobRef } = (await uploadRes.json()) as { blob: unknown }
+    images.push({ alt: '', image: blobRef })
+  }
+
+  const postRecord: Record<string, unknown> = {
+    $type: 'app.bsky.feed.post',
+    text: post.content,
+    createdAt: new Date().toISOString(),
+  }
+  if (images.length > 0) {
+    postRecord.embed = {
+      $type: 'app.bsky.embed.images',
+      images,
+    }
+  }
+
+  const recordRes = await fetch('https://bsky.social/xrpc/com.atproto.repo.createRecord', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${bskySession.accessJwt}`,
+    },
+    body: JSON.stringify({
+      repo: bskySession.did,
+      collection: 'app.bsky.feed.post',
+      record: postRecord,
+    }),
+    cache: 'no-store',
+  })
+  if (!recordRes.ok) {
+    throw new Error(`Bluesky post failed (${recordRes.status}): ${await recordRes.text()}`)
+  }
+  const record = (await recordRes.json()) as { uri: string; cid: string }
+
+  const rkey = record.uri.split('/').pop() ?? ''
+  const postUrl = `https://bsky.app/profile/${bskySession.handle}/post/${rkey}`
+
+  const { error: updateError } = await supabase
+    .from('post')
+    .update({ status: 'published', url: postUrl })
+    .eq('event_id', eventId)
+  if (updateError) {
+    console.error('[publishPostAction] posted to Bluesky but DB update failed:', updateError)
   }
 
   revalidatePath(`/dashboard/events/${eventId}/post`)

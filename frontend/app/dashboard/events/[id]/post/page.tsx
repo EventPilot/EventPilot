@@ -146,7 +146,7 @@ export default async function EventDetailPostChatPage({ params }: { params: Prom
   }))
 
   const publishAction = publishPostAction.bind(null, id)
-  const canPublish = Boolean(post?.content) && post?.status !== 'published'
+  const canPublish = Boolean(post?.content)
 
   return (
     <AppShell title="Editor">
@@ -157,7 +157,7 @@ export default async function EventDetailPostChatPage({ params }: { params: Prom
           action={
             <form action={publishAction}>
               <Button type="submit" disabled={!canPublish}>
-                {post?.status === 'published' ? 'Posted' : post?.content ? 'Post' : 'No draft yet'}
+                {post?.content ? (post?.status === 'published' ? 'Repost' : 'Post') : 'No draft yet'}
               </Button>
             </form>
           }
