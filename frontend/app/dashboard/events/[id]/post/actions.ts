@@ -184,6 +184,67 @@ export async function getLatestAgentRunAction(eventId: string) {
   } satisfies AgentRun
 }
 
+export type MediaEntry = {
+  id: string
+  event_id: string
+  storage_path: string
+  url: string
+  created_at: string
+}
+
+export async function uploadMediaAction(eventId: string, formData: FormData) {
+  const supabase = await createClient()
+  const {
+    data: { session },
+  } = await supabase.auth.getSession()
+  if (!session?.access_token) {
+    redirect('/login')
+  }
+
+  const file = formData.get('file') as File | null
+  if (!file) throw new Error('No file provided')
+
+  const backendForm = new FormData()
+  backendForm.append('file', file, file.name)
+
+  const response = await fetch(`${apiBaseUrl()}/api/events/${eventId}/media`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${session.access_token}`,
+    },
+    body: backendForm,
+    cache: 'no-store',
+  })
+
+  if (!response.ok) {
+    throw new Error(await response.text())
+  }
+
+  return (await response.json()) as MediaEntry
+}
+
+export async function deleteMediaAction(mediaId: string) {
+  const supabase = await createClient()
+  const {
+    data: { session },
+  } = await supabase.auth.getSession()
+  if (!session?.access_token) {
+    redirect('/login')
+  }
+
+  const response = await fetch(`${apiBaseUrl()}/api/media/${mediaId}`, {
+    method: 'DELETE',
+    headers: {
+      Authorization: `Bearer ${session.access_token}`,
+    },
+    cache: 'no-store',
+  })
+
+  if (!response.ok) {
+    throw new Error(await response.text())
+  }
+}
+
 export async function publishPostAction(eventId: string) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
