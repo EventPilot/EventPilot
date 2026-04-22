@@ -226,6 +226,12 @@ func (h *ChatHandler) CreateChatMessage(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	history, err := h.RunManager.LoadChatHistory(r.Context(), chatID)
+	if err != nil {
+		log.Printf("[CreateChatMessage] failed to load chat history for chat=%s, proceeding without it: %v", chatID, err)
+		history = nil
+	}
+
 	_ = services.UpdateEventContext(h.SupabaseClient, eventID, map[string]any{
 		"last_agent_assessment": "Received a new workflow request from the requester chat.",
 	})
@@ -239,7 +245,7 @@ func (h *ChatHandler) CreateChatMessage(w http.ResponseWriter, r *http.Request) 
 	planSummary, tasks, plannerPayload, err := services.BuildRunPlan(r.Context(), event, models.User{
 		ID:   user.ID.String(),
 		Name: user.Email,
-	}, members, req.Message)
+	}, members, history, req.Message)
 	if err != nil {
 		http.Error(w, "failed to plan run", http.StatusInternalServerError)
 		return
