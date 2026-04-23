@@ -57,31 +57,29 @@ export default async function EventDetailPostChatPage({ params }: { params: Prom
   const isOwner = membership?.role === 'Owner'
 
   let initialEntries: ChatMessageEntry[] = []
-  if (isOwner) {
-    const { data: chat } = await supabase
-      .from('chat')
-      .select('id')
-      .eq('event_id', id)
-      .eq('user_id', user.id)
-      .maybeSingle()
+  const { data: chat } = await supabase
+    .from('chat')
+    .select('id')
+    .eq('event_id', id)
+    .eq('user_id', user.id)
+    .maybeSingle()
 
-    if (chat?.id) {
-      const { data: rows } = await supabase
-        .from('chat_message')
-        .select('id, sender_type, message, created_at, message_type, metadata')
-        .eq('chat_id', chat.id)
-        .order('created_at', { ascending: true })
+  if (chat?.id) {
+    const { data: rows } = await supabase
+      .from('chat_message')
+      .select('id, sender_type, message, created_at, message_type, metadata')
+      .eq('chat_id', chat.id)
+      .order('created_at', { ascending: true })
 
-      initialEntries =
-        rows?.map((row: { id: string; sender_type: string; message: string; created_at: string; message_type?: string; metadata?: Record<string, unknown> }) => ({
-          id: row.id,
-          role: row.sender_type === 'user' ? 'user' : 'assistant',
-          text: row.message,
-          createdAt: row.created_at,
-          messageType: row.message_type ?? 'message',
-          metadata: row.metadata ?? {},
-        })) ?? []
-    }
+    initialEntries =
+      rows?.map((row: { id: string; sender_type: string; message: string; created_at: string; message_type?: string; metadata?: Record<string, unknown> }) => ({
+        id: row.id,
+        role: row.sender_type === 'user' ? 'user' : 'assistant',
+        text: row.message,
+        createdAt: row.created_at,
+        messageType: row.message_type ?? 'message',
+        metadata: row.metadata ?? {},
+      })) ?? []
   }
 
   const { data: latestRunRows } = await supabase

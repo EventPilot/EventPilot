@@ -85,6 +85,12 @@ type QueuedChatMessage struct {
 	CreatedAt time.Time              `json:"created_at"`
 }
 
+type ChatHistoryEntry struct {
+	SenderType  string `json:"sender_type"`
+	Message     string `json:"message"`
+	MessageType string `json:"message_type"`
+}
+
 type plannerResponse struct {
 	Summary string        `json:"summary"`
 	Tasks   []plannerTask `json:"tasks"`
@@ -448,7 +454,13 @@ func (m *RunManager) PromoteNextQueuedMessage(ctx context.Context, chatID, event
 		return nil, false, err
 	}
 
-	planSummary, tasks, plannerPayload, err := BuildRunPlan(ctx, event, requester, members, queued.Message)
+	history, err := m.LoadChatHistory(ctx, chatID)
+	if err != nil {
+		log.Printf("[PromoteNextQueuedMessage] failed to load chat history for chat=%s, proceeding without it: %v", chatID, err)
+		history = nil
+	}
+
+	planSummary, tasks, plannerPayload, err := BuildRunPlan(ctx, event, requester, members, history, queued.Message)
 	if err != nil {
 		return nil, false, err
 	}
@@ -831,6 +843,24 @@ func (m *RunManager) insertChatMessage(chatID string, senderType string, senderI
 	return err
 }
 
+func (m *RunManager) LoadChatHistory(ctx context.Context, chatID string) ([]ChatHistoryEntry, error) {
+	var rows []ChatHistoryEntry
+	_, err := m.client.From("chat_message").
+		Select("sender_type, message, message_type", "", false).
+		Eq("chat_id", chatID).
+		ExecuteTo(&rows)
+	if err != nil {
+		return nil, err
+	}
+	filtered := rows[:0]
+	for _, row := range rows {
+		if row.MessageType != "approval_request" {
+			filtered = append(filtered, row)
+		}
+	}
+	return filtered, nil
+}
+
 func workflowState(metadata map[string]interface{}) string {
 	if metadata == nil {
 		return ""
@@ -845,8 +875,8 @@ func workflowState(metadata map[string]interface{}) string {
 	return ""
 }
 
-func BuildRunPlan(ctx context.Context, event models.Event, requester models.User, members []EventMemberWithUser, message string) (string, []AgentTask, map[string]interface{}, error) {
-	resp, err := planTasks(ctx, event, requester, members, message)
+func BuildRunPlan(ctx context.Context, event models.Event, requester models.User, members []EventMemberWithUser, history []ChatHistoryEntry, message string) (string, []AgentTask, map[string]interface{}, error) {
+	resp, err := planTasks(ctx, event, requester, members, history, message)
 	if err != nil {
 		return "", nil, nil, err
 	}
@@ -918,7 +948,7 @@ func normalizeTaskKind(kind string) string {
 	}
 }
 
-func planTasks(ctx context.Context, event models.Event, requester models.User, members []EventMemberWithUser, message string) (*plannerResponse, error) {
+func planTasks(ctx context.Context, event models.Event, requester models.User, members []EventMemberWithUser, history []ChatHistoryEntry, message string) (*plannerResponse, error) {
 	apiKey := os.Getenv("ANTHROPIC_API_KEY")
 	if apiKey == "" {
 		log.Printf("[agent_runs.planTasks] using fallback plan: ANTHROPIC_API_KEY is not set for event=%s requester=%s", event.ID, requester.ID)
@@ -928,6 +958,21 @@ func planTasks(ctx context.Context, event models.Event, requester models.User, m
 	client := anthropic.NewClient(option.WithAPIKey(apiKey))
 	memberJSON, _ := json.Marshal(members)
 	contextJSON, _ := json.Marshal(event.Context)
+
+	var historySection strings.Builder
+	if len(history) > 0 {
+		historySection.WriteString("Chat history (oldest first):\n")
+		for _, entry := range history {
+			role := entry.SenderType
+			if role == "agent" {
+				role = "assistant"
+			}
+			historySection.WriteString(fmt.Sprintf("[%s]: %s\n", role, entry.Message))
+		}
+	} else {
+		historySection.WriteString("Chat history: none\n")
+	}
+
 	userPrompt := fmt.Sprintf(`Return JSON with fields "summary" and "tasks".
 Each task must have: "title", "kind", optional "target_user_id", optional "instructions", optional "completion_signal".
 Only use kind values "internal" or "ask_member".
@@ -948,8 +993,9 @@ Requester:
 Available event members:
 %s
 
+%s
 Latest user message:
-%s`, event.ID, event.Title, event.Description, event.EventDate, event.Location, string(contextJSON), requester.ID, requester.Name, string(memberJSON), message)
+%s`, event.ID, event.Title, event.Description, event.EventDate, event.Location, string(contextJSON), requester.ID, requester.Name, string(memberJSON), historySection.String(), message)
 
 	msg, err := client.Messages.New(ctx, anthropic.MessageNewParams{
 		Model:     anthropic.ModelClaudeHaiku4_5_20251001,
