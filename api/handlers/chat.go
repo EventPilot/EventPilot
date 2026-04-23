@@ -220,6 +220,22 @@ func (h *ChatHandler) CreateChatMessage(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	owner, err := isEventOwner(h.SupabaseClient, eventID, user.ID.String())
+	if err != nil {
+		http.Error(w, "failed to check event role", http.StatusInternalServerError)
+		return
+	}
+	if !owner {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(createChatMessageResponse{
+			ChatID:  chatID,
+			Run:     nil,
+			Message: responseMessage,
+			Queued:  false,
+		})
+		return
+	}
+
 	event, members, err := loadEventContext(h.SupabaseClient, eventID)
 	if err != nil {
 		http.Error(w, "failed to load event context", http.StatusInternalServerError)
@@ -370,6 +386,26 @@ func (h *ChatHandler) StreamRun(w http.ResponseWriter, r *http.Request) {
 			flusher.Flush()
 		}
 	}
+}
+
+func isEventOwner(client *supabase.Client, eventID, userID string) (bool, error) {
+	var rows []struct {
+		Role string `json:"role"`
+	}
+	_, err := client.From("event_member").
+		Select("role", "", false).
+		Eq("event_id", eventID).
+		Eq("user_id", userID).
+		ExecuteTo(&rows)
+	if err != nil {
+		return false, err
+	}
+	for _, r := range rows {
+		if strings.EqualFold(r.Role, "owner") {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 func loadEventContext(client *supabase.Client, eventID string) (models.Event, []services.EventMemberWithUser, error) {
